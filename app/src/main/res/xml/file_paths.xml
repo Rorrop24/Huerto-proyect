@@ -1,0 +1,5 @@
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="fotos_huerto" path="fotos/" />
+    <!-- Permite leer fotos que una versión anterior haya dejado en caché. -->
+    <cache-path name="fotos" path="fotos/" />
+</paths>

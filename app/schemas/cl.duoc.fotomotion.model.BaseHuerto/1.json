@@ -1,0 +1,248 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "0f4f8e93de6d264ee9afdd4eb072f488",
+    "entities": [
+      {
+        "tableName": "sectores",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `ubicacion` TEXT NOT NULL, `estado` TEXT NOT NULL, `responsableId` TEXT NOT NULL, `fechaCreacion` TEXT NOT NULL, `fechaActualizacion` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "codigoParcela",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tituloParcela",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detalleParcela",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lugarParcela",
+            "columnName": "ubicacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "situacionParcela",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encargadoParcela",
+            "columnName": "responsableId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diaRegistro",
+            "columnName": "fechaCreacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diaCambio",
+            "columnName": "fechaActualizacion",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "cultivos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombreComun` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `sectorId` INTEGER NOT NULL, `fechaSiembra` TEXT, `fechaTrasplante` TEXT, `fechaEstimadaCosecha` TEXT, `frecuenciaRiegoDias` INTEGER NOT NULL, `estado` TEXT NOT NULL, `observaciones` TEXT NOT NULL, `fotografiaReferencialFicticia` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "codigoSiembra",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tituloSiembra",
+            "columnName": "nombreComun",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detalleSiembra",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parcelaAsociada",
+            "columnName": "sectorId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diaSiembra",
+            "columnName": "fechaSiembra",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "diaTraslado",
+            "columnName": "fechaTrasplante",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "diaCosecha",
+            "columnName": "fechaEstimadaCosecha",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "intervaloRiego",
+            "columnName": "frecuenciaRiegoDias",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "situacionSiembra",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notasSiembra",
+            "columnName": "observaciones",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imagenSiembra",
+            "columnName": "fotografiaReferencialFicticia",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "tareas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tipo` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `sectorId` INTEGER NOT NULL, `cultivoId` INTEGER, `fechaCreacion` TEXT NOT NULL, `fechaProgramada` TEXT NOT NULL, `responsableId` TEXT NOT NULL, `creadorId` TEXT NOT NULL, `estado` TEXT NOT NULL, `fechaHoraRealizacion` TEXT, `fotografiaAdjunta` TEXT, `comentarioEstudiante` TEXT, `comentarioDocente` TEXT, `validadorId` TEXT, `fechaHoraValidacion` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "codigoLabor",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "claseLabor",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detalleLabor",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parcelaTrabajo",
+            "columnName": "sectorId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "siembraTrabajo",
+            "columnName": "cultivoId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "diaCreacion",
+            "columnName": "fechaCreacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diaPlanificado",
+            "columnName": "fechaProgramada",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encargadoLabor",
+            "columnName": "responsableId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "autorLabor",
+            "columnName": "creadorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "situacionLabor",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "momentoEntrega",
+            "columnName": "fechaHoraRealizacion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "imagenLabor",
+            "columnName": "fotografiaAdjunta",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "notaEntrega",
+            "columnName": "comentarioEstudiante",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "notaRevision",
+            "columnName": "comentarioDocente",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revisorLabor",
+            "columnName": "validadorId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "momentoRevision",
+            "columnName": "fechaHoraValidacion",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0f4f8e93de6d264ee9afdd4eb072f488')"
+    ]
+  }
+}
