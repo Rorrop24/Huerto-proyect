@@ -1,4 +1,4 @@
-package cl.duoc.fotomotion.model
+package cl.duoc.fotomotion.domain.model
 
 enum class TipoCuenta { DOCENTE, ALUMNO }
 

@@ -1,19 +1,14 @@
-package cl.duoc.fotomotion.ui.screens
+package cl.duoc.fotomotion.ui.lecturas
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
-import cl.duoc.fotomotion.model.*
-import cl.duoc.fotomotion.viewmodel.*
-import cl.duoc.fotomotion.ui.components.*
 
 @Composable
 fun PantallaLecturas(controlLecturas: LecturasViewModel) {

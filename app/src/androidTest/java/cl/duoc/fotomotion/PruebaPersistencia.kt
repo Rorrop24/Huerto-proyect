@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import cl.duoc.fotomotion.model.*
-import cl.duoc.fotomotion.repository.RepositorioHuerto
+import cl.duoc.fotomotion.data.local.BaseHuerto
+import cl.duoc.fotomotion.data.repository.RepositorioHuerto
+import cl.duoc.fotomotion.domain.model.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*

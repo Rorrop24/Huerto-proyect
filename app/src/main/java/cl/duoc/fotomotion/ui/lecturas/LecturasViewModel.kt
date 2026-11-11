@@ -1,7 +1,7 @@
-package cl.duoc.fotomotion.viewmodel
+package cl.duoc.fotomotion.ui.lecturas
 
 import androidx.lifecycle.ViewModel
-import cl.duoc.fotomotion.model.MedicionHuerto
+import cl.duoc.fotomotion.domain.model.MedicionHuerto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 

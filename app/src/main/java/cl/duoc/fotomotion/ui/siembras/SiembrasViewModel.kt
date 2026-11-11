@@ -1,30 +1,19 @@
-package cl.duoc.fotomotion.viewmodel
+package cl.duoc.fotomotion.ui.siembras
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import cl.duoc.fotomotion.model.*
-import cl.duoc.fotomotion.repository.RepositorioHuerto
+import cl.duoc.fotomotion.data.repository.RepositorioHuerto
+import cl.duoc.fotomotion.domain.model.SiembraHuerto
+import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-data class EstadoSiembras(
-    val listaSiembras: List<SiembraHuerto> = emptyList(),
-    val opcionesParcela: List<ParcelaHuerto> = emptyList(),
-    val textoSiembra: String = "",
-    val parcelaElegida: Int? = null,
-    val errorSiembra: String = "",
-    val errorSeleccion: String = "",
-    val siembraEnEdicion: SiembraHuerto? = null,
-    val avisoSiembras: String = "",
-    val guardandoSiembra: Boolean = false
-)
-
 class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
-    private val repositorio = RepositorioHuerto(BaseHuerto.abrirBase(aplicacion).consultasHuerto())
+    private val repositorio = RepositorioHuerto.desdeContexto(aplicacion)
     private val estadoMutable = MutableStateFlow(EstadoSiembras())
     val estadoSiembras = estadoMutable.asStateFlow()
 
@@ -40,25 +29,22 @@ class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
             }
         }
     }
+
     fun escribirSiembra(textoNuevo: String) {
         estadoMutable.value = estadoMutable.value.copy(textoSiembra = textoNuevo, errorSiembra = "", avisoSiembras = "")
     }
     fun elegirParcela(codigoElegido: Int) {
         estadoMutable.value = estadoMutable.value.copy(parcelaElegida = codigoElegido, errorSeleccion = "")
     }
+
     fun revisarSiembra(): Boolean {
         val formulario = estadoMutable.value
-        var problemaNombre = ""
-        var problemaSeleccion = ""
-        if (formulario.textoSiembra.isBlank()) problemaNombre = "Escribe el nombre del cultivo."
-        else if (formulario.textoSiembra.trim().length < 3 || formulario.textoSiembra.length > 40)
-            problemaNombre = "Usa entre 3 y 40 caracteres."
-        if (formulario.parcelaElegida == null) problemaSeleccion = "Selecciona un sector."
-        else if (formulario.opcionesParcela.none { parcela -> parcela.codigoParcela == formulario.parcelaElegida })
-            problemaSeleccion = "El sector ya no está disponible."
+        val problemaNombre = ValidacionesHuerto.revisarTexto(formulario.textoSiembra, 3, 40, "Escribe el nombre del cultivo.")
+        val problemaSeleccion = ValidacionesHuerto.revisarSector(formulario.parcelaElegida, formulario.opcionesParcela, "Selecciona un sector.")
         estadoMutable.value = formulario.copy(errorSiembra = problemaNombre, errorSeleccion = problemaSeleccion)
         return problemaNombre.isEmpty() && problemaSeleccion.isEmpty()
     }
+
     fun confirmarSiembra() {
         if (estadoMutable.value.guardandoSiembra || !revisarSiembra()) return
         val formulario = estadoMutable.value
@@ -74,15 +60,16 @@ class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
                 if (siembraAnterior == null) repositorio.registrarSiembra(registroNuevo)
                 else repositorio.corregirSiembra(registroNuevo)
                 limpiarSiembra()
-                estadoMutable.value = estadoMutable.value.copy(avisoSiembras = "Cultivo guardado.")
+                informarSiembra("Cultivo guardado.")
             } catch (problema: Exception) {
                 if (problema is CancellationException) throw problema
-                estadoMutable.value = estadoMutable.value.copy(avisoSiembras = "No se pudo guardar el cultivo.")
+                informarSiembra("No se pudo guardar el cultivo.")
             } finally {
                 estadoMutable.value = estadoMutable.value.copy(guardandoSiembra = false)
             }
         }
     }
+
     fun prepararSiembra(registroElegido: SiembraHuerto) {
         estadoMutable.value = estadoMutable.value.copy(siembraEnEdicion = registroElegido,
             textoSiembra = registroElegido.tituloSiembra, parcelaElegida = registroElegido.parcelaAsociada,
@@ -97,12 +84,15 @@ class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
             try {
                 val seBorro = repositorio.borrarSiembra(registroElegido)
                 if (seBorro && estadoMutable.value.siembraEnEdicion?.codigoSiembra == registroElegido.codigoSiembra) limpiarSiembra()
-                estadoMutable.value = estadoMutable.value.copy(avisoSiembras = if (seBorro)
-                    "Cultivo eliminado." else "Primero elimina las tareas de este cultivo.")
+                informarSiembra(if (seBorro) "Cultivo eliminado." else "Primero elimina las tareas de este cultivo.")
             } catch (problema: Exception) {
                 if (problema is CancellationException) throw problema
-                estadoMutable.value = estadoMutable.value.copy(avisoSiembras = "No se pudo eliminar el cultivo.")
+                informarSiembra("No se pudo eliminar el cultivo.")
             }
         }
+    }
+
+    private fun informarSiembra(mensajeNuevo: String) {
+        estadoMutable.value = estadoMutable.value.copy(avisoSiembras = mensajeNuevo)
     }
 }

@@ -13,11 +13,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import cl.duoc.fotomotion.R
-import cl.duoc.fotomotion.model.ParcelaHuerto
-import androidx.compose.ui.res.painterResource
+import cl.duoc.fotomotion.domain.model.ParcelaHuerto
 
 @Composable
 fun CampoHuerto(valorCampo: String, etiquetaCampo: String, mensajeCampo: String,
@@ -39,6 +39,15 @@ fun AvisoHuerto(textoAviso: String) {
     }
 }
 
+// Mensaje de error con ícono para datos que no son campos de texto (selecciones, fotos).
+@Composable
+fun ErrorHuerto(mensajeError: String, descripcionIcono: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(Icons.Default.Warning, contentDescription = descripcionIcono, tint = MaterialTheme.colorScheme.error)
+        Text(mensajeError, color = MaterialTheme.colorScheme.error)
+    }
+}
+
 @Composable
 fun ElegirSector(listaOpciones: List<ParcelaHuerto>, codigoSeleccionado: Int?,
     mensajeSeleccion: String, alSeleccionar: (Int) -> Unit, habilitado: Boolean = true) {
@@ -51,12 +60,7 @@ fun ElegirSector(listaOpciones: List<ParcelaHuerto>, codigoSeleccionado: Int?,
                 label = { Text(parcela.tituloParcela) })
         }
     }
-    if (mensajeSeleccion.isNotEmpty()) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Default.Warning, contentDescription = "Error de selección", tint = MaterialTheme.colorScheme.error)
-            Text(mensajeSeleccion, color = MaterialTheme.colorScheme.error)
-        }
-    }
+    if (mensajeSeleccion.isNotEmpty()) ErrorHuerto(mensajeSeleccion, "Error de selección")
 }
 
 @Composable

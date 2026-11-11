@@ -1,9 +1,12 @@
-package cl.duoc.fotomotion.model
+package cl.duoc.fotomotion.data.local
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import cl.duoc.fotomotion.domain.model.LaborHuerto
+import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.model.SiembraHuerto
 
 @Database(entities = [ParcelaHuerto::class, SiembraHuerto::class, LaborHuerto::class], version = 1, exportSchema = true)
 abstract class BaseHuerto : RoomDatabase() {

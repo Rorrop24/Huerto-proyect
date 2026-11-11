@@ -1,29 +1,19 @@
-package cl.duoc.fotomotion.viewmodel
+package cl.duoc.fotomotion.ui.parcelas
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import cl.duoc.fotomotion.model.*
-import cl.duoc.fotomotion.repository.RepositorioHuerto
+import cl.duoc.fotomotion.data.repository.RepositorioHuerto
+import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-data class EstadoParcelas(
-    val listaParcelas: List<ParcelaHuerto> = emptyList(),
-    val textoParcela: String = "",
-    val textoLugar: String = "",
-    val errorParcela: String = "",
-    val errorLugar: String = "",
-    val parcelaEnEdicion: ParcelaHuerto? = null,
-    val avisoParcelas: String = "",
-    val guardandoParcela: Boolean = false
-)
-
 class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
-    private val repositorio = RepositorioHuerto(BaseHuerto.abrirBase(aplicacion).consultasHuerto())
+    private val repositorio = RepositorioHuerto.desdeContexto(aplicacion)
     private val estadoMutable = MutableStateFlow(EstadoParcelas())
     val estadoParcelas = estadoMutable.asStateFlow()
 
@@ -44,18 +34,8 @@ class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
 
     fun revisarParcela(): Boolean {
         val formulario = estadoMutable.value
-        var problemaNombre = ""
-        var problemaLugar = ""
-        if (formulario.textoParcela.isBlank()) {
-            problemaNombre = "Escribe el nombre del sector."
-        } else if (formulario.textoParcela.trim().length < 3 || formulario.textoParcela.length > 40) {
-            problemaNombre = "Usa entre 3 y 40 caracteres."
-        }
-        if (formulario.textoLugar.isBlank()) {
-            problemaLugar = "Escribe dónde está el sector."
-        } else if (formulario.textoLugar.trim().length < 3 || formulario.textoLugar.length > 80) {
-            problemaLugar = "Usa entre 3 y 80 caracteres."
-        }
+        val problemaNombre = ValidacionesHuerto.revisarTexto(formulario.textoParcela, 3, 40, "Escribe el nombre del sector.")
+        val problemaLugar = ValidacionesHuerto.revisarTexto(formulario.textoLugar, 3, 80, "Escribe dónde está el sector.")
         estadoMutable.value = formulario.copy(errorParcela = problemaNombre, errorLugar = problemaLugar)
         return problemaNombre.isEmpty() && problemaLugar.isEmpty()
     }
@@ -75,10 +55,10 @@ class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
                 if (parcelaAnterior == null) repositorio.registrarParcela(registroNuevo)
                 else repositorio.corregirParcela(registroNuevo)
                 limpiarParcela()
-                estadoMutable.value = estadoMutable.value.copy(avisoParcelas = "Sector guardado.")
+                informarParcela("Sector guardado.")
             } catch (problema: Exception) {
                 if (problema is CancellationException) throw problema
-                estadoMutable.value = estadoMutable.value.copy(avisoParcelas = "No se pudo guardar el sector.")
+                informarParcela("No se pudo guardar el sector.")
             } finally {
                 estadoMutable.value = estadoMutable.value.copy(guardandoParcela = false)
             }
@@ -98,12 +78,15 @@ class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
             try {
                 val seBorro = repositorio.borrarParcela(registroElegido)
                 if (seBorro && estadoMutable.value.parcelaEnEdicion?.codigoParcela == registroElegido.codigoParcela) limpiarParcela()
-                estadoMutable.value = estadoMutable.value.copy(avisoParcelas = if (seBorro)
-                    "Sector eliminado." else "Primero elimina los cultivos y tareas de este sector.")
+                informarParcela(if (seBorro) "Sector eliminado." else "Primero elimina los cultivos y tareas de este sector.")
             } catch (problema: Exception) {
                 if (problema is CancellationException) throw problema
-                estadoMutable.value = estadoMutable.value.copy(avisoParcelas = "No se pudo eliminar el sector.")
+                informarParcela("No se pudo eliminar el sector.")
             }
         }
+    }
+
+    private fun informarParcela(mensajeNuevo: String) {
+        estadoMutable.value = estadoMutable.value.copy(avisoParcelas = mensajeNuevo)
     }
 }

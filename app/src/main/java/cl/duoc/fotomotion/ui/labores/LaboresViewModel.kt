@@ -1,40 +1,22 @@
-package cl.duoc.fotomotion.viewmodel
+package cl.duoc.fotomotion.ui.labores
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import cl.duoc.fotomotion.model.*
-import cl.duoc.fotomotion.repository.RepositorioHuerto
+import cl.duoc.fotomotion.data.repository.RepositorioHuerto
+import cl.duoc.fotomotion.domain.model.CuentaHuerto
+import cl.duoc.fotomotion.domain.model.LaborHuerto
+import cl.duoc.fotomotion.domain.model.TipoCuenta
+import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-
 import java.time.LocalDateTime
-import java.time.format.DateTimeParseException
-
-data class EstadoLabores(
-    val listaLabores: List<LaborHuerto> = emptyList(),
-    val sectoresDisponibles: List<ParcelaHuerto> = emptyList(),
-    val textoDetalle: String = "",
-    val textoFecha: String = LocalDate.now().toString(),
-    val sectorTrabajo: Int? = null,
-    val errorDetalle: String = "",
-    val errorFecha: String = "",
-    val errorSector: String = "",
-    val laborEnEdicion: LaborHuerto? = null,
-    val laborEnEntrega: LaborHuerto? = null,
-    val direccionFoto: String = "",
-    val textoComentario: String = "",
-    val errorFoto: String = "",
-    val errorComentario: String = "",
-    val avisoLabores: String = "",
-    val guardandoLabor: Boolean = false
-)
 
 class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
-    private val repositorio = RepositorioHuerto(BaseHuerto.abrirBase(aplicacion).consultasHuerto())
+    private val repositorio = RepositorioHuerto.desdeContexto(aplicacion)
     private val estadoMutable = MutableStateFlow(EstadoLabores())
     val estadoLabores = estadoMutable.asStateFlow()
 
@@ -50,6 +32,7 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             }
         }
     }
+
     fun escribirDetalle(textoNuevo: String) {
         estadoMutable.value = estadoMutable.value.copy(textoDetalle = textoNuevo, errorDetalle = "", avisoLabores = "")
     }
@@ -59,26 +42,17 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
     fun elegirSectorTrabajo(codigoElegido: Int) {
         estadoMutable.value = estadoMutable.value.copy(sectorTrabajo = codigoElegido, errorSector = "")
     }
+
     fun revisarLabor(): Boolean {
         val formulario = estadoMutable.value
-        var problemaDetalle = ""
-        var problemaFecha = ""
-        var problemaSector = ""
-        if (formulario.textoDetalle.isBlank()) problemaDetalle = "Explica qué hay que hacer."
-        else if (formulario.textoDetalle.trim().length < 5 || formulario.textoDetalle.length > 150)
-            problemaDetalle = "Usa entre 5 y 150 caracteres."
-        if (formulario.textoFecha.isBlank()) problemaFecha = "Escribe una fecha."
-        else if (formulario.textoFecha.length != 10) problemaFecha = "Usa el formato AAAA-MM-DD."
-        else {
-            try { LocalDate.parse(formulario.textoFecha) }
-            catch (problema: DateTimeParseException) { problemaFecha = "Escribe una fecha real: AAAA-MM-DD." }
-        }
-        if (formulario.sectorTrabajo == null) problemaSector = "Selecciona el sector de la tarea."
-        else if (formulario.sectoresDisponibles.none { parcela -> parcela.codigoParcela == formulario.sectorTrabajo })
-            problemaSector = "El sector ya no está disponible."
+        val problemaDetalle = ValidacionesHuerto.revisarTexto(formulario.textoDetalle, 5, 150, "Explica qué hay que hacer.")
+        val problemaFecha = ValidacionesHuerto.revisarFecha(formulario.textoFecha)
+        val problemaSector = ValidacionesHuerto.revisarSector(formulario.sectorTrabajo, formulario.sectoresDisponibles,
+            "Selecciona el sector de la tarea.")
         estadoMutable.value = formulario.copy(errorDetalle = problemaDetalle, errorFecha = problemaFecha, errorSector = problemaSector)
         return problemaDetalle.isEmpty() && problemaFecha.isEmpty() && problemaSector.isEmpty()
     }
+
     fun confirmarLabor(cuentaResponsable: CuentaHuerto) {
         if (cuentaResponsable.tipoCuenta != TipoCuenta.DOCENTE || estadoMutable.value.guardandoLabor || !revisarLabor()) return
         val formulario = estadoMutable.value
@@ -102,6 +76,7 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             } finally { estadoMutable.value = estadoMutable.value.copy(guardandoLabor = false) }
         }
     }
+
     fun prepararLabor(registroElegido: LaborHuerto) {
         estadoMutable.value = estadoMutable.value.copy(laborEnEdicion = registroElegido,
             textoDetalle = registroElegido.detalleLabor, textoFecha = registroElegido.diaPlanificado,
@@ -125,17 +100,15 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
     fun informarLabor(mensajeNuevo: String) {
         estadoMutable.value = estadoMutable.value.copy(avisoLabores = mensajeNuevo)
     }
+
     fun revisarEntrega(): Boolean {
         val formulario = estadoMutable.value
-        var problemaFoto = ""
-        var problemaComentario = ""
-        if (formulario.direccionFoto.isBlank()) problemaFoto = "Adjunta una foto con cámara o galería."
-        if (formulario.textoComentario.isBlank()) problemaComentario = "Cuenta qué hiciste en el huerto."
-        else if (formulario.textoComentario.trim().length < 5 || formulario.textoComentario.length > 300)
-            problemaComentario = "Usa entre 5 y 300 caracteres."
+        val problemaFoto = if (formulario.direccionFoto.isBlank()) "Adjunta una foto con cámara o galería." else ""
+        val problemaComentario = ValidacionesHuerto.revisarTexto(formulario.textoComentario, 5, 300, "Cuenta qué hiciste en el huerto.")
         estadoMutable.value = formulario.copy(errorFoto = problemaFoto, errorComentario = problemaComentario)
         return problemaFoto.isEmpty() && problemaComentario.isEmpty()
     }
+
     fun entregarLabor(cuentaResponsable: CuentaHuerto) {
         if (cuentaResponsable.tipoCuenta != TipoCuenta.ALUMNO || estadoMutable.value.guardandoLabor || !revisarEntrega()) return
         val formulario = estadoMutable.value
@@ -155,6 +128,7 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             } finally { estadoMutable.value = estadoMutable.value.copy(guardandoLabor = false) }
         }
     }
+
     fun revisarTrabajo(registroElegido: LaborHuerto, aceptarTrabajo: Boolean, cuentaResponsable: CuentaHuerto) {
         if (cuentaResponsable.tipoCuenta != TipoCuenta.DOCENTE || estadoMutable.value.guardandoLabor) return
         estadoMutable.value = estadoMutable.value.copy(guardandoLabor = true)
@@ -170,6 +144,7 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
             } finally { estadoMutable.value = estadoMutable.value.copy(guardandoLabor = false) }
         }
     }
+
     fun eliminarLabor(registroElegido: LaborHuerto) {
         viewModelScope.launch {
             try {

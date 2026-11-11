@@ -1,6 +1,11 @@
-package cl.duoc.fotomotion.repository
+package cl.duoc.fotomotion.data.repository
 
-import cl.duoc.fotomotion.model.*
+import android.content.Context
+import cl.duoc.fotomotion.data.local.BaseHuerto
+import cl.duoc.fotomotion.data.local.ConsultasHuerto
+import cl.duoc.fotomotion.domain.model.LaborHuerto
+import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.model.SiembraHuerto
 
 class RepositorioHuerto(private val consultasLocales: ConsultasHuerto) {
     fun leerParcelas() = consultasLocales.observarParcelas()
@@ -26,4 +31,10 @@ class RepositorioHuerto(private val consultasLocales: ConsultasHuerto) {
     suspend fun registrarLabor(datoLabor: LaborHuerto) = consultasLocales.agregarLabor(datoLabor)
     suspend fun corregirLabor(datoLabor: LaborHuerto) = consultasLocales.modificarLabor(datoLabor)
     suspend fun borrarLabor(datoLabor: LaborHuerto) = consultasLocales.quitarLabor(datoLabor)
+
+    companion object {
+        // Punto único para crear el repositorio sobre la base local compartida.
+        fun desdeContexto(contextoAplicacion: Context) =
+            RepositorioHuerto(BaseHuerto.abrirBase(contextoAplicacion).consultasHuerto())
+    }
 }

@@ -37,10 +37,12 @@ El proyecto está hecho en Kotlin. Usa Jetpack Compose y Material 3 para las pan
 
 El código principal está en `app/src/main/java/cl/duoc/fotomotion/`:
 
-- `model/`: entidades y acceso a la base de datos.
-- `repository/`: operaciones sobre los registros.
-- `viewmodel/`: estado de las pantallas y validaciones.
-- `ui/`: navegación, pantallas y componentes.
+- `domain/model/`: entidades y modelos del huerto.
+- `domain/validation/`: reglas de validación de los formularios.
+- `data/local/`: base de datos Room y consultas (DAO).
+- `data/repository/`: operaciones sobre los registros.
+- `ui/<función>/` (`acceso`, `parcelas`, `siembras`, `labores`, `lecturas`): pantalla, ViewModel y UiState de cada función.
+- `ui/navigation/`, `ui/components/`, `ui/theme/`: navegación, componentes reutilizables y tema.
 
 ## Pruebas
 

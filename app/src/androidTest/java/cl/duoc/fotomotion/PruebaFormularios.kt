@@ -3,7 +3,7 @@ package cl.duoc.fotomotion
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import cl.duoc.fotomotion.model.BaseHuerto
+import cl.duoc.fotomotion.data.local.BaseHuerto
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After

@@ -1,6 +1,9 @@
-package cl.duoc.fotomotion.model
+package cl.duoc.fotomotion.data.local
 
 import androidx.room.*
+import cl.duoc.fotomotion.domain.model.LaborHuerto
+import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.model.SiembraHuerto
 import kotlinx.coroutines.flow.Flow
 
 @Dao

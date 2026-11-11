@@ -1,7 +1,8 @@
-package cl.duoc.fotomotion.viewmodel
+package cl.duoc.fotomotion.ui.acceso
 
 import androidx.lifecycle.ViewModel
-import cl.duoc.fotomotion.model.*
+import cl.duoc.fotomotion.domain.model.CuentaHuerto
+import cl.duoc.fotomotion.domain.model.TipoCuenta
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
