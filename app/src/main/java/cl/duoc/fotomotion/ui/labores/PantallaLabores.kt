@@ -13,8 +13,11 @@ import androidx.compose.ui.unit.dp
 import cl.duoc.fotomotion.domain.model.CuentaHuerto
 import cl.duoc.fotomotion.domain.model.LaborHuerto
 import cl.duoc.fotomotion.domain.model.TipoCuenta
+import cl.duoc.fotomotion.domain.model.TipoLabor
+import cl.duoc.fotomotion.domain.model.estaAtrasada
 import cl.duoc.fotomotion.ui.components.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @Composable
 fun PantallaLabores(controlLabores: LaboresViewModel, cuentaActual: CuentaHuerto) {
@@ -35,7 +38,8 @@ fun PantallaLabores(controlLabores: LaboresViewModel, cuentaActual: CuentaHuerto
         if (datosPantalla.listaLabores.isEmpty()) item { Text("Todavía no hay tareas. Ingresa como docente para crear una.") }
         items(datosPantalla.listaLabores, key = { labor -> labor.codigoLabor }) { labor ->
             val nombreSector = datosPantalla.sectoresDisponibles.find { parcela -> parcela.codigoParcela == labor.parcelaTrabajo }?.tituloParcela ?: "Sector no disponible"
-            TarjetaLabor(labor, nombreSector, permiteRevision, habilitado = !datosPantalla.guardandoLabor,
+            val nombreCultivo = datosPantalla.cultivosDisponibles.find { siembra -> siembra.codigoSiembra == labor.siembraTrabajo }?.tituloSiembra
+            TarjetaLabor(labor, nombreSector, nombreCultivo, permiteRevision, habilitado = !datosPantalla.guardandoLabor,
                 alRealizar = {
                     controlLabores.iniciarEntrega(labor)
                     subirAlInicio()
@@ -66,8 +70,14 @@ private fun FormularioLabor(datosPantalla: EstadoLabores, controlLabores: Labore
                 controlLabores::escribirDetalle, !datosPantalla.guardandoLabor)
             CampoHuerto(datosPantalla.textoFecha, "Fecha (AAAA-MM-DD)", datosPantalla.errorFecha,
                 controlLabores::escribirFecha, !datosPantalla.guardandoLabor)
+            ElegirOpcion("Tipo de tarea", TipoLabor.entries, datosPantalla.tipoLabor, { tipo -> tipo.etiqueta },
+                controlLabores::elegirTipoLabor, !datosPantalla.guardandoLabor)
             ElegirSector(datosPantalla.sectoresDisponibles, datosPantalla.sectorTrabajo, datosPantalla.errorSector,
                 controlLabores::elegirSectorTrabajo, !datosPantalla.guardandoLabor)
+            if (datosPantalla.sectorTrabajo != null) ElegirCultivo(
+                datosPantalla.cultivosDisponibles.filter { siembra -> siembra.parcelaAsociada == datosPantalla.sectorTrabajo },
+                datosPantalla.cultivoTrabajo, datosPantalla.errorCultivo, controlLabores::elegirCultivoTrabajo,
+                !datosPantalla.guardandoLabor)
             Button(onClick = { controlLabores.confirmarLabor(cuentaActual) }, enabled = !datosPantalla.guardandoLabor) { Text("Guardar tarea") }
             if (datosPantalla.laborEnEdicion != null) TextButton(onClick = controlLabores::limpiarLabor, enabled = !datosPantalla.guardandoLabor) { Text("Cancelar edición") }
         }
@@ -94,16 +104,18 @@ private fun FormularioEntrega(datosPantalla: EstadoLabores, controlLabores: Labo
 }
 
 @Composable
-private fun TarjetaLabor(labor: LaborHuerto, nombreSector: String, permiteRevision: Boolean, habilitado: Boolean,
+private fun TarjetaLabor(labor: LaborHuerto, nombreSector: String, nombreCultivo: String?, permiteRevision: Boolean, habilitado: Boolean,
     alRealizar: () -> Unit, alRevisar: (Boolean) -> Unit, alEditar: () -> Unit, alBorrar: () -> Unit) {
     Card(Modifier.fillMaxWidth().animateContentSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(labor.detalleLabor, style = MaterialTheme.typography.titleMedium)
             Text("Sector: $nombreSector · ${labor.diaPlanificado}")
-            Text("Estado: " + when (labor.situacionLabor) {
-                "VALIDADA" -> "Aprobada"
-                "RECHAZADA" -> "Requiere corrección"
-                "PENDIENTE_DE_VALIDACION" -> "En revisión"
+            Text("Tipo: ${TipoLabor.desde(labor.claseLabor).etiqueta}" + (nombreCultivo?.let { cultivo -> " · Cultivo: $cultivo" } ?: ""))
+            Text("Estado: " + when {
+                labor.estaAtrasada(LocalDate.now()) -> "Atrasada"
+                labor.situacionLabor == "VALIDADA" -> "Aprobada"
+                labor.situacionLabor == "RECHAZADA" -> "Requiere corrección"
+                labor.situacionLabor == "PENDIENTE_DE_VALIDACION" -> "En revisión"
                 else -> "Pendiente"
             })
             if (!labor.imagenLabor.isNullOrBlank()) FotoHuerto(labor.imagenLabor)

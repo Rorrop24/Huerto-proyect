@@ -39,9 +39,10 @@ El código principal está en `app/src/main/java/cl/duoc/fotomotion/`:
 
 - `domain/model/`: entidades y modelos del huerto.
 - `domain/validation/`: reglas de validación de los formularios.
+- `domain/alertas/`: cálculo de recordatorios (riegos, cosechas, tareas atrasadas y problemas).
 - `data/local/`: base de datos Room y consultas (DAO).
 - `data/repository/`: operaciones sobre los registros.
-- `ui/<función>/` (`acceso`, `parcelas`, `siembras`, `labores`, `lecturas`): pantalla, ViewModel y UiState de cada función.
+- `ui/<función>/` (`acceso`, `parcelas`, `siembras`, `labores`, `problemas`, `alertas`, `lecturas`): pantalla, ViewModel y UiState de cada función.
 - `ui/navigation/`, `ui/components/`, `ui/theme/`: navegación, componentes reutilizables y tema.
 
 ## Pruebas

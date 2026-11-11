@@ -5,6 +5,7 @@ import cl.duoc.fotomotion.data.local.BaseHuerto
 import cl.duoc.fotomotion.data.local.ConsultasHuerto
 import cl.duoc.fotomotion.domain.model.LaborHuerto
 import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.model.ProblemaHuerto
 import cl.duoc.fotomotion.domain.model.SiembraHuerto
 
 class RepositorioHuerto(private val consultasLocales: ConsultasHuerto) {
@@ -31,6 +32,10 @@ class RepositorioHuerto(private val consultasLocales: ConsultasHuerto) {
     suspend fun registrarLabor(datoLabor: LaborHuerto) = consultasLocales.agregarLabor(datoLabor)
     suspend fun corregirLabor(datoLabor: LaborHuerto) = consultasLocales.modificarLabor(datoLabor)
     suspend fun borrarLabor(datoLabor: LaborHuerto) = consultasLocales.quitarLabor(datoLabor)
+
+    fun leerProblemas() = consultasLocales.observarProblemas()
+    suspend fun registrarProblema(datoProblema: ProblemaHuerto) = consultasLocales.agregarProblema(datoProblema)
+    suspend fun corregirProblema(datoProblema: ProblemaHuerto) = consultasLocales.modificarProblema(datoProblema)
 
     companion object {
         // Punto único para crear el repositorio sobre la base local compartida.

@@ -3,6 +3,7 @@ package cl.duoc.fotomotion.data.local
 import androidx.room.*
 import cl.duoc.fotomotion.domain.model.LaborHuerto
 import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.model.ProblemaHuerto
 import cl.duoc.fotomotion.domain.model.SiembraHuerto
 import kotlinx.coroutines.flow.Flow
 
@@ -25,6 +26,11 @@ interface ConsultasHuerto {
     @Delete suspend fun quitarLabor(registroLabor: LaborHuerto)
     @Query("SELECT * FROM tareas ORDER BY id DESC")
     fun observarLabores(): Flow<List<LaborHuerto>>
+
+    @Insert suspend fun agregarProblema(registroProblema: ProblemaHuerto)
+    @Update suspend fun modificarProblema(registroProblema: ProblemaHuerto)
+    @Query("SELECT * FROM problemas ORDER BY id DESC")
+    fun observarProblemas(): Flow<List<ProblemaHuerto>>
 
     @Query("SELECT COUNT(*) FROM cultivos WHERE sectorId = :codigoBuscado")
     suspend fun contarSiembrasDeParcela(codigoBuscado: Int): Int

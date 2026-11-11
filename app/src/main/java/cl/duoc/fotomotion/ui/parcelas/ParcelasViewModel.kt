@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.fotomotion.data.repository.RepositorioHuerto
+import cl.duoc.fotomotion.domain.model.EstadoSector
 import cl.duoc.fotomotion.domain.model.ParcelaHuerto
 import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import kotlinx.coroutines.CancellationException
@@ -31,6 +32,9 @@ class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
     fun escribirLugar(textoNuevo: String) {
         estadoMutable.value = estadoMutable.value.copy(textoLugar = textoNuevo, errorLugar = "", avisoParcelas = "")
     }
+    fun elegirEstado(estadoNuevo: EstadoSector) {
+        estadoMutable.value = estadoMutable.value.copy(estadoElegido = estadoNuevo, avisoParcelas = "")
+    }
 
     fun revisarParcela(): Boolean {
         val formulario = estadoMutable.value
@@ -48,7 +52,7 @@ class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
             tituloParcela = "", lugarParcela = "", situacionParcela = "EN_USO",
             encargadoParcela = "USR-001", diaRegistro = LocalDate.now().toString()
         )).copy(tituloParcela = formulario.textoParcela.trim(), lugarParcela = formulario.textoLugar.trim(),
-            diaCambio = LocalDate.now().toString())
+            situacionParcela = formulario.estadoElegido.name, diaCambio = LocalDate.now().toString())
         estadoMutable.value = formulario.copy(guardandoParcela = true)
         viewModelScope.launch {
             try {
@@ -68,6 +72,7 @@ class ParcelasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
     fun prepararParcela(registroElegido: ParcelaHuerto) {
         estadoMutable.value = estadoMutable.value.copy(parcelaEnEdicion = registroElegido,
             textoParcela = registroElegido.tituloParcela, textoLugar = registroElegido.lugarParcela,
+            estadoElegido = EstadoSector.desde(registroElegido.situacionParcela),
             errorParcela = "", errorLugar = "", avisoParcelas = "Editando sector.")
     }
     fun limpiarParcela() {

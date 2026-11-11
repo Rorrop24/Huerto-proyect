@@ -7,6 +7,7 @@ import cl.duoc.fotomotion.data.repository.RepositorioHuerto
 import cl.duoc.fotomotion.domain.model.CuentaHuerto
 import cl.duoc.fotomotion.domain.model.LaborHuerto
 import cl.duoc.fotomotion.domain.model.TipoCuenta
+import cl.duoc.fotomotion.domain.model.TipoLabor
 import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,11 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
                 estadoMutable.value = estadoMutable.value.copy(sectoresDisponibles = parcelasRecibidas)
             }
         }
+        viewModelScope.launch {
+            repositorio.leerSiembras().collect { siembrasRecibidas ->
+                estadoMutable.value = estadoMutable.value.copy(cultivosDisponibles = siembrasRecibidas)
+            }
+        }
     }
 
     fun escribirDetalle(textoNuevo: String) {
@@ -40,7 +46,19 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
         estadoMutable.value = estadoMutable.value.copy(textoFecha = textoNuevo, errorFecha = "")
     }
     fun elegirSectorTrabajo(codigoElegido: Int) {
-        estadoMutable.value = estadoMutable.value.copy(sectorTrabajo = codigoElegido, errorSector = "")
+        val formulario = estadoMutable.value
+        // Al cambiar de sector se quita el cultivo si pertenecía a otro sector.
+        val cultivoVigente = formulario.cultivoTrabajo?.takeIf { codigoCultivo ->
+            formulario.cultivosDisponibles.any { siembra -> siembra.codigoSiembra == codigoCultivo && siembra.parcelaAsociada == codigoElegido }
+        }
+        estadoMutable.value = formulario.copy(sectorTrabajo = codigoElegido, cultivoTrabajo = cultivoVigente,
+            errorSector = "", errorCultivo = "")
+    }
+    fun elegirCultivoTrabajo(codigoElegido: Int?) {
+        estadoMutable.value = estadoMutable.value.copy(cultivoTrabajo = codigoElegido, errorCultivo = "")
+    }
+    fun elegirTipoLabor(tipoNuevo: TipoLabor) {
+        estadoMutable.value = estadoMutable.value.copy(tipoLabor = tipoNuevo)
     }
 
     fun revisarLabor(): Boolean {
@@ -49,8 +67,11 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
         val problemaFecha = ValidacionesHuerto.revisarFecha(formulario.textoFecha)
         val problemaSector = ValidacionesHuerto.revisarSector(formulario.sectorTrabajo, formulario.sectoresDisponibles,
             "Selecciona el sector de la tarea.")
-        estadoMutable.value = formulario.copy(errorDetalle = problemaDetalle, errorFecha = problemaFecha, errorSector = problemaSector)
-        return problemaDetalle.isEmpty() && problemaFecha.isEmpty() && problemaSector.isEmpty()
+        val problemaCultivo = ValidacionesHuerto.revisarCultivo(formulario.cultivoTrabajo, formulario.sectorTrabajo,
+            formulario.cultivosDisponibles)
+        estadoMutable.value = formulario.copy(errorDetalle = problemaDetalle, errorFecha = problemaFecha,
+            errorSector = problemaSector, errorCultivo = problemaCultivo)
+        return problemaDetalle.isEmpty() && problemaFecha.isEmpty() && problemaSector.isEmpty() && problemaCultivo.isEmpty()
     }
 
     fun confirmarLabor(cuentaResponsable: CuentaHuerto) {
@@ -58,11 +79,12 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
         val formulario = estadoMutable.value
         val codigoSector = formulario.sectorTrabajo ?: return
         val laborAnterior = formulario.laborEnEdicion
-        val registroNuevo = (laborAnterior ?: LaborHuerto(claseLabor = "CUIDADO", parcelaTrabajo = codigoSector,
+        val registroNuevo = (laborAnterior ?: LaborHuerto(parcelaTrabajo = codigoSector,
             diaCreacion = LocalDate.now().toString(), autorLabor = cuentaResponsable.codigoCuenta,
             encargadoLabor = "USR-002", situacionLabor = "PENDIENTE")).copy(
                 detalleLabor = formulario.textoDetalle.trim(), diaPlanificado = formulario.textoFecha,
-                parcelaTrabajo = codigoSector)
+                parcelaTrabajo = codigoSector, siembraTrabajo = formulario.cultivoTrabajo,
+                claseLabor = formulario.tipoLabor.name)
         estadoMutable.value = formulario.copy(guardandoLabor = true)
         viewModelScope.launch {
             try {
@@ -80,12 +102,15 @@ class LaboresViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
     fun prepararLabor(registroElegido: LaborHuerto) {
         estadoMutable.value = estadoMutable.value.copy(laborEnEdicion = registroElegido,
             textoDetalle = registroElegido.detalleLabor, textoFecha = registroElegido.diaPlanificado,
-            sectorTrabajo = registroElegido.parcelaTrabajo, errorDetalle = "", errorFecha = "", errorSector = "",
+            sectorTrabajo = registroElegido.parcelaTrabajo, cultivoTrabajo = registroElegido.siembraTrabajo,
+            tipoLabor = TipoLabor.desde(registroElegido.claseLabor),
+            errorDetalle = "", errorFecha = "", errorSector = "", errorCultivo = "",
             avisoLabores = "Editando tarea.")
     }
     fun limpiarLabor() {
         estadoMutable.value = EstadoLabores(listaLabores = estadoMutable.value.listaLabores,
-            sectoresDisponibles = estadoMutable.value.sectoresDisponibles)
+            sectoresDisponibles = estadoMutable.value.sectoresDisponibles,
+            cultivosDisponibles = estadoMutable.value.cultivosDisponibles)
     }
     fun iniciarEntrega(registroElegido: LaborHuerto) {
         estadoMutable.value = estadoMutable.value.copy(laborEnEntrega = registroElegido,

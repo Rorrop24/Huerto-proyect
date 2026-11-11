@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import cl.duoc.fotomotion.R
 import cl.duoc.fotomotion.domain.model.ParcelaHuerto
+import cl.duoc.fotomotion.domain.model.SiembraHuerto
+import cl.duoc.fotomotion.domain.model.admiteAsignaciones
 
 @Composable
 fun CampoHuerto(valorCampo: String, etiquetaCampo: String, mensajeCampo: String,
@@ -48,19 +50,44 @@ fun ErrorHuerto(mensajeError: String, descripcionIcono: String) {
     }
 }
 
+// Fila de chips para elegir una opción de una lista (estados, tipos, cultivos).
+@Composable
+fun <T> ElegirOpcion(titulo: String, opciones: List<T>, seleccionada: T?, etiqueta: (T) -> String,
+    alElegir: (T) -> Unit, habilitado: Boolean = true) {
+    Text(titulo, style = MaterialTheme.typography.labelLarge)
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(opciones) { opcion ->
+            FilterChip(selected = seleccionada == opcion, onClick = { alElegir(opcion) }, enabled = habilitado,
+                label = { Text(etiqueta(opcion)) })
+        }
+    }
+}
+
 @Composable
 fun ElegirSector(listaOpciones: List<ParcelaHuerto>, codigoSeleccionado: Int?,
     mensajeSeleccion: String, alSeleccionar: (Int) -> Unit, habilitado: Boolean = true) {
+    val sectoresAsignables = listaOpciones.filter { parcela -> parcela.admiteAsignaciones }
     Text("Sector asociado", style = MaterialTheme.typography.labelLarge)
     if (listaOpciones.isEmpty()) Text("Primero crea un sector en la pestaña Sectores.")
+    else if (sectoresAsignables.isEmpty()) Text("No hay sectores disponibles: todos están fuera de uso.")
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(listaOpciones, key = { parcela -> parcela.codigoParcela }) { parcela ->
+        items(sectoresAsignables, key = { parcela -> parcela.codigoParcela }) { parcela ->
             FilterChip(selected = codigoSeleccionado == parcela.codigoParcela,
                 onClick = { alSeleccionar(parcela.codigoParcela) }, enabled = habilitado,
                 label = { Text(parcela.tituloParcela) })
         }
     }
     if (mensajeSeleccion.isNotEmpty()) ErrorHuerto(mensajeSeleccion, "Error de selección")
+}
+
+// Cultivo opcional dentro del sector elegido; "Sin cultivo" deja la relación vacía.
+@Composable
+fun ElegirCultivo(cultivosDelSector: List<SiembraHuerto>, codigoSeleccionado: Int?, mensajeError: String,
+    alSeleccionar: (Int?) -> Unit, habilitado: Boolean = true) {
+    ElegirOpcion("Cultivo relacionado (opcional)", listOf<SiembraHuerto?>(null) + cultivosDelSector,
+        cultivosDelSector.find { siembra -> siembra.codigoSiembra == codigoSeleccionado },
+        { siembra -> siembra?.tituloSiembra ?: "Sin cultivo" }, { siembra -> alSeleccionar(siembra?.codigoSiembra) }, habilitado)
+    if (mensajeError.isNotEmpty()) ErrorHuerto(mensajeError, "Error de cultivo")
 }
 
 @Composable
@@ -77,3 +104,6 @@ fun ConfirmarBorrado(nombreRegistro: String, alBorrar: () -> Unit, alCancelar: (
         confirmButton = { TextButton(onClick = alBorrar) { Text("Eliminar") } },
         dismissButton = { TextButton(onClick = alCancelar) { Text("Cancelar") } })
 }
+
+// Convierte "2026-11-11T10:30:15" en "2026-11-11 10:30" para mostrarlo.
+fun mostrarMomento(momento: String): String = momento.replace('T', ' ').take(16)

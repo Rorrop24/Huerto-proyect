@@ -14,3 +14,19 @@ data class ParcelaHuerto(
     @ColumnInfo(name = "fechaCreacion") val diaRegistro: String = "",
     @ColumnInfo(name = "fechaActualizacion") val diaCambio: String = ""
 )
+
+enum class EstadoSector(val etiqueta: String) {
+    DISPONIBLE("Disponible"),
+    EN_USO("En uso"),
+    EN_MANTENIMIENTO("En mantenimiento"),
+    FUERA_DE_USO("Fuera de uso");
+
+    companion object {
+        // Los sectores guardados sin un estado reconocido se consideran en uso.
+        fun desde(codigo: String) = entries.find { estado -> estado.name == codigo } ?: EN_USO
+    }
+}
+
+// Un sector fuera de uso no puede recibir nuevos cultivos, tareas ni reportes.
+val ParcelaHuerto.admiteAsignaciones: Boolean
+    get() = EstadoSector.desde(situacionParcela) != EstadoSector.FUERA_DE_USO

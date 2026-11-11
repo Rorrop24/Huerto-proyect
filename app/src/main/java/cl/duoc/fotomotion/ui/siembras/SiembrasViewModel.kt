@@ -4,13 +4,13 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.fotomotion.data.repository.RepositorioHuerto
+import cl.duoc.fotomotion.domain.model.EstadoCultivo
 import cl.duoc.fotomotion.domain.model.SiembraHuerto
 import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
     private val repositorio = RepositorioHuerto.desdeContexto(aplicacion)
@@ -36,13 +36,41 @@ class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
     fun elegirParcela(codigoElegido: Int) {
         estadoMutable.value = estadoMutable.value.copy(parcelaElegida = codigoElegido, errorSeleccion = "")
     }
+    fun elegirEstado(estadoNuevo: EstadoCultivo) {
+        estadoMutable.value = estadoMutable.value.copy(estadoCultivo = estadoNuevo, avisoSiembras = "")
+    }
+    fun escribirFechaSiembra(textoNuevo: String) {
+        estadoMutable.value = estadoMutable.value.copy(textoFechaSiembra = textoNuevo, errorFechaSiembra = "")
+    }
+    fun escribirFechaTraslado(textoNuevo: String) {
+        estadoMutable.value = estadoMutable.value.copy(textoFechaTraslado = textoNuevo, errorFechaTraslado = "")
+    }
+    fun escribirFechaCosecha(textoNuevo: String) {
+        estadoMutable.value = estadoMutable.value.copy(textoFechaCosecha = textoNuevo, errorFechaCosecha = "")
+    }
+    fun escribirRiego(textoNuevo: String) {
+        estadoMutable.value = estadoMutable.value.copy(textoRiego = textoNuevo, errorRiego = "")
+    }
 
     fun revisarSiembra(): Boolean {
         val formulario = estadoMutable.value
         val problemaNombre = ValidacionesHuerto.revisarTexto(formulario.textoSiembra, 3, 40, "Escribe el nombre del cultivo.")
         val problemaSeleccion = ValidacionesHuerto.revisarSector(formulario.parcelaElegida, formulario.opcionesParcela, "Selecciona un sector.")
-        estadoMutable.value = formulario.copy(errorSiembra = problemaNombre, errorSeleccion = problemaSeleccion)
-        return problemaNombre.isEmpty() && problemaSeleccion.isEmpty()
+        val problemaSiembra = ValidacionesHuerto.revisarFecha(formulario.textoFechaSiembra)
+        val problemaTraslado = ValidacionesHuerto.revisarFechaOpcional(formulario.textoFechaTraslado).ifEmpty {
+            ValidacionesHuerto.revisarOrden(formulario.textoFechaSiembra, formulario.textoFechaTraslado,
+                "El trasplante no puede ser antes de la siembra.")
+        }
+        val problemaCosecha = ValidacionesHuerto.revisarFechaOpcional(formulario.textoFechaCosecha).ifEmpty {
+            ValidacionesHuerto.revisarOrden(formulario.textoFechaSiembra, formulario.textoFechaCosecha,
+                "La cosecha no puede ser antes de la siembra.")
+        }
+        val problemaRiego = ValidacionesHuerto.revisarNumero(formulario.textoRiego, 1, 30, "Indica cada cuántos días se riega.")
+        estadoMutable.value = formulario.copy(errorSiembra = problemaNombre, errorSeleccion = problemaSeleccion,
+            errorFechaSiembra = problemaSiembra, errorFechaTraslado = problemaTraslado,
+            errorFechaCosecha = problemaCosecha, errorRiego = problemaRiego)
+        return listOf(problemaNombre, problemaSeleccion, problemaSiembra, problemaTraslado, problemaCosecha, problemaRiego)
+            .all { problema -> problema.isEmpty() }
     }
 
     fun confirmarSiembra() {
@@ -50,10 +78,12 @@ class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
         val formulario = estadoMutable.value
         val codigoParcela = formulario.parcelaElegida ?: return
         val siembraAnterior = formulario.siembraEnEdicion
-        val registroNuevo = (siembraAnterior ?: SiembraHuerto(tituloSiembra = "",
-            parcelaAsociada = codigoParcela, intervaloRiego = 1, situacionSiembra = "SEMBRADO",
-            diaSiembra = LocalDate.now().toString())).copy(
-                tituloSiembra = formulario.textoSiembra.trim(), parcelaAsociada = codigoParcela)
+        val registroNuevo = (siembraAnterior ?: SiembraHuerto(parcelaAsociada = codigoParcela, intervaloRiego = 1)).copy(
+            tituloSiembra = formulario.textoSiembra.trim(), parcelaAsociada = codigoParcela,
+            situacionSiembra = formulario.estadoCultivo.name, diaSiembra = formulario.textoFechaSiembra,
+            diaTraslado = formulario.textoFechaTraslado.trim().ifBlank { null },
+            diaCosecha = formulario.textoFechaCosecha.trim().ifBlank { null },
+            intervaloRiego = formulario.textoRiego.trim().toInt())
         estadoMutable.value = formulario.copy(guardandoSiembra = true)
         viewModelScope.launch {
             try {
@@ -73,7 +103,11 @@ class SiembrasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) 
     fun prepararSiembra(registroElegido: SiembraHuerto) {
         estadoMutable.value = estadoMutable.value.copy(siembraEnEdicion = registroElegido,
             textoSiembra = registroElegido.tituloSiembra, parcelaElegida = registroElegido.parcelaAsociada,
-            errorSiembra = "", errorSeleccion = "", avisoSiembras = "Editando cultivo.")
+            estadoCultivo = EstadoCultivo.desde(registroElegido.situacionSiembra),
+            textoFechaSiembra = registroElegido.diaSiembra ?: "", textoFechaTraslado = registroElegido.diaTraslado ?: "",
+            textoFechaCosecha = registroElegido.diaCosecha ?: "", textoRiego = registroElegido.intervaloRiego.toString(),
+            errorSiembra = "", errorSeleccion = "", errorFechaSiembra = "", errorFechaTraslado = "",
+            errorFechaCosecha = "", errorRiego = "", avisoSiembras = "Editando cultivo.")
     }
     fun limpiarSiembra() {
         estadoMutable.value = EstadoSiembras(listaSiembras = estadoMutable.value.listaSiembras,

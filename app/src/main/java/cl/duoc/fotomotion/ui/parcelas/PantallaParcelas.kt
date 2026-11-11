@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cl.duoc.fotomotion.domain.model.CuentaHuerto
+import cl.duoc.fotomotion.domain.model.EstadoSector
 import cl.duoc.fotomotion.domain.model.ParcelaHuerto
 import cl.duoc.fotomotion.domain.model.TipoCuenta
 import cl.duoc.fotomotion.ui.components.*
@@ -33,6 +34,8 @@ fun PantallaParcelas(controlParcelas: ParcelasViewModel, cuentaActual: CuentaHue
                         controlParcelas::escribirParcela, !datosPantalla.guardandoParcela)
                     CampoHuerto(datosPantalla.textoLugar, "Ubicación", datosPantalla.errorLugar,
                         controlParcelas::escribirLugar, !datosPantalla.guardandoParcela)
+                    ElegirOpcion("Estado del sector", EstadoSector.entries, datosPantalla.estadoElegido,
+                        { estado -> estado.etiqueta }, controlParcelas::elegirEstado, !datosPantalla.guardandoParcela)
                     Button(onClick = controlParcelas::confirmarParcela, enabled = !datosPantalla.guardandoParcela) { Text("Guardar sector") }
                     if (datosPantalla.parcelaEnEdicion != null) TextButton(onClick = controlParcelas::limpiarParcela, enabled = !datosPantalla.guardandoParcela) { Text("Cancelar edición") }
                 }
@@ -45,6 +48,7 @@ fun PantallaParcelas(controlParcelas: ParcelasViewModel, cuentaActual: CuentaHue
                 Column(Modifier.padding(16.dp)) {
                     Text(parcela.tituloParcela, style = MaterialTheme.typography.titleMedium)
                     Text("Ubicación: ${parcela.lugarParcela}")
+                    Text("Estado: ${EstadoSector.desde(parcela.situacionParcela).etiqueta}")
                     if (permiteCambios) Row {
                         TextButton(onClick = {
                             controlParcelas.prepararParcela(parcela)
