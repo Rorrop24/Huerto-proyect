@@ -1,0 +1,10 @@
+.gradle/
+.idea/
+.kotlin/
+**/build/
+local.properties
+*.iml
+*.log
+
+# Evidencia de compilacion del proyecto.
+!evidencias/compilacion.log

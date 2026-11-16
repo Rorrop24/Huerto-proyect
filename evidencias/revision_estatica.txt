@@ -1,0 +1,6 @@
+sectores: mismas 8 columnas, tipos, nulabilidad y clave primaria.
+cultivos: mismas 11 columnas, tipos, nulabilidad y clave primaria.
+tareas: mismas 16 columnas, tipos, nulabilidad y clave primaria.
+Torpedo 1: 10 lineas.
+Torpedo 2: 10 lineas.
+Torpedo 3: 9 lineas.
