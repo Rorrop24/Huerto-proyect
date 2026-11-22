@@ -1,0 +1,3 @@
+package cl.duoc.huerto.api.model;
+
+public enum EstadoCultivo { PLANIFICADO, SEMBRADO, EN_CRECIMIENTO, LISTO_PARA_COSECHAR, COSECHADO, CON_PROBLEMAS, FINALIZADO }

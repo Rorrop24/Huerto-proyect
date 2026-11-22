@@ -1,0 +1,3 @@
+package cl.duoc.huerto.api.model;
+
+public enum EstadoTarea { PENDIENTE, EN_DESARROLLO, REALIZADA, PENDIENTE_DE_VALIDACION, VALIDADA, RECHAZADA, ATRASADA }
