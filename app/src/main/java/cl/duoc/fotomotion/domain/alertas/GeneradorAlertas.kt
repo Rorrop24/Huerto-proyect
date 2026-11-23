@@ -49,7 +49,7 @@ object GeneradorAlertas {
         return alertas.sortedBy { alerta -> alerta.tipo.ordinal }
     }
 
-    // Siguiente día de riego contando desde la cultivo según la frecuencia; null si faltan datos.
+    // Siguiente día de riego contando desde la siembra según la frecuencia; null si faltan datos.
     fun proximoRiego(cultivo: Cultivo, hoy: LocalDate): LocalDate? {
         val inicio = ValidacionesHuerto.leerFecha(cultivo.fechaSiembra) ?: return null
         if (cultivo.frecuenciaRiegoDias <= 0) return null
