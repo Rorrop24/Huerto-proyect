@@ -1,5 +1,9 @@
 package cl.duoc.fotomotion.domain
 
+import java.time.LocalDate
+import cl.duoc.fotomotion.domain.model.estaAtrasada
+import cl.duoc.fotomotion.domain.model.Tarea
+import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
 import cl.duoc.fotomotion.domain.model.Cuenta
 import cl.duoc.fotomotion.domain.model.EstadoSector
 import cl.duoc.fotomotion.domain.model.Sector
@@ -84,5 +88,31 @@ class ValidadoresTest {
         assertTrue(ValidadorProblemas.validarReporte(1, sectores, 7, cultivos, TipoProblema.FALTA_AGUA, "Tierra seca").esValido)
         assertEquals("", ValidadorProblemas.validarSeguimiento(""))
         assertEquals("Usa entre 3 y 200 caracteres.", ValidadorProblemas.validarSeguimiento("ok"))
+    }
+
+    @Test
+    fun casosLimiteDeLasReglasComunes() {
+        assertEquals("Usa entre 3 y 5 caracteres.", ValidacionesHuerto.revisarTexto("demasiado largo", 3, 5, "Vacío"))
+        assertEquals("Escribe una contraseña.", ValidacionesHuerto.revisarContrasenaNueva(""))
+        assertEquals("Combina letras y números.", ValidacionesHuerto.revisarContrasenaNueva("12345678"))
+        assertEquals("Escribe una fecha.", ValidacionesHuerto.revisarFecha(" "))
+        assertEquals("El sector ya no está disponible.", ValidacionesHuerto.revisarSector(2, sectores, "Elige"))
+        assertEquals("El sector ya no está disponible.", ValidacionesHuerto.revisarSector(9, sectores, "Elige"))
+        assertEquals("El cultivo ya no está disponible.", ValidacionesHuerto.revisarCultivo(99, 1, cultivos))
+        assertEquals("El cultivo no pertenece al sector elegido.", ValidacionesHuerto.revisarCultivo(7, 2, cultivos))
+        assertEquals("", ValidacionesHuerto.revisarCultivo(7, 1, cultivos))
+    }
+
+    @Test
+    fun cadaFormularioEsInvalidoSiFallaCualquierCampo() {
+        assertFalse(ValidadorAcceso.validarIngreso("docente@huerto.cl", "").esValido)
+        assertEquals("Repite la contraseña.", ValidadorAcceso.validarRegistro("Ana", "ana@huerto.cl", "Huerto123", "").confirmacion)
+        assertFalse(ValidadorSectores.validar("Invernadero", "").esValido)
+        assertFalse(ValidadorTareas.validarEntrega("content://foto/1", "").esValido)
+        val errores = ValidadorCultivos.validar("Lechuga", 1, sectores, "2026-09-01", "2026-9-15", "1-12-2026", "3")
+        assertEquals("Usa el formato AAAA-MM-DD.", errores.fechaTrasplante)
+        assertEquals("Usa el formato AAAA-MM-DD.", errores.fechaCosecha)
+        // Una fecha mal escrita no marca la tarea como atrasada.
+        assertFalse(Tarea(sectorId = 1, fechaProgramada = "mañana").estaAtrasada(LocalDate.of(2026, 11, 11)))
     }
 }

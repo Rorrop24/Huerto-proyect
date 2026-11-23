@@ -42,4 +42,12 @@ class RepositorioHuertoTest {
         repositorio.actualizarProblema(problema.copy(descripcion = "Plaga simulada"))
         assertEquals("Plaga simulada", repositorio.leerProblemas().first().single().descripcion)
     }
+
+    @Test
+    fun unSectorConTareasPeroSinCultivosTampocoSeBorra() = runTest {
+        repositorio.registrarSector(Sector(nombre = "Compostera"))
+        val sector = repositorio.leerSectores().first().single()
+        repositorio.registrarTarea(Tarea(sectorId = sector.id))
+        assertFalse(repositorio.eliminarSector(sector))
+    }
 }

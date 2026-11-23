@@ -1,5 +1,7 @@
 package cl.duoc.fotomotion.ui.sectores
 
+import cl.duoc.fotomotion.domain.model.Sector
+import kotlinx.coroutines.CompletableDeferred
 import cl.duoc.fotomotion.domain.model.EstadoSector
 import cl.duoc.fotomotion.domain.model.Cultivo
 import cl.duoc.fotomotion.prueba.HuertoDaoEnMemoria
@@ -118,5 +120,41 @@ class SectoresViewModelTest {
         viewModel.limpiarFormulario()
         assertFalse(viewModel.uiState.value.formularioVisible)
         assertEquals("", viewModel.uiState.value.textoUbicacion)
+    }
+
+    @Test
+    fun tocarGuardarDosVecesNoDuplicaElSector() = runTest {
+        llenarFormulario()
+        dao.pausa = CompletableDeferred()
+        viewModel.guardarSector(Datos.docente)
+        assertTrue(viewModel.uiState.value.guardando)
+        viewModel.guardarSector(Datos.docente) // segundo toque mientras se guarda: se ignora
+        dao.pausa?.complete(Unit)
+        assertEquals(1, dao.sectores.value.size)
+        assertFalse(viewModel.uiState.value.guardando)
+    }
+
+    @Test
+    fun siLaOperacionSeCancelaNoSeMuestraError() = runTest {
+        llenarFormulario()
+        dao.cancelar = true
+        viewModel.guardarSector(Datos.docente)
+        assertEquals("", viewModel.uiState.value.aviso)
+        assertFalse(viewModel.uiState.value.guardando)
+        viewModel.eliminarSector(Sector(id = 1))
+        assertEquals("", viewModel.uiState.value.aviso)
+    }
+
+    @Test
+    fun eliminarOtroSectorNoBorraElFormularioEnEdicion() = runTest {
+        dao.sectores.value = listOf(Sector(id = 1, nombre = "Invernadero", ubicacion = "Patio"),
+            Sector(id = 2, nombre = "Bancal", ubicacion = "Entrada"))
+        viewModel.editarSector(dao.sectores.value.first())
+        viewModel.eliminarSector(dao.sectores.value.last())
+        assertEquals("Sector eliminado.", viewModel.uiState.value.aviso)
+        assertEquals("Invernadero", viewModel.uiState.value.textoNombre)
+        viewModel.limpiarFormulario()
+        viewModel.eliminarSector(dao.sectores.value.first())
+        assertTrue(dao.sectores.value.isEmpty())
     }
 }

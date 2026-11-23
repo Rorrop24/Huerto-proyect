@@ -1,5 +1,7 @@
 package cl.duoc.fotomotion.ui.problemas
 
+import cl.duoc.fotomotion.domain.model.Problema
+import kotlinx.coroutines.CompletableDeferred
 import cl.duoc.fotomotion.domain.model.EstadoProblema
 import cl.duoc.fotomotion.domain.model.Sector
 import cl.duoc.fotomotion.domain.model.Cultivo
@@ -98,5 +100,60 @@ class ProblemasViewModelTest {
         assertEquals("No se pudo guardar el seguimiento.", viewModel.uiState.value.aviso)
         viewModel.informar("Aviso")
         assertEquals("Aviso", viewModel.uiState.value.aviso)
+    }
+
+    @Test
+    fun tocarReportarDosVecesNoDuplicaElProblema() = runTest {
+        dao.pausa = CompletableDeferred()
+        reportarFaltaDeAgua()
+        viewModel.reportarProblema(Datos.mateo)
+        dao.pausa?.complete(Unit)
+        assertEquals(1, dao.problemas.value.size)
+    }
+
+    @Test
+    fun unReporteSinFotoYElCultivoDelMismoSectorSeMantiene() = runTest {
+        viewModel.abrirReporte()
+        viewModel.elegirSector(1)
+        viewModel.elegirCultivo(5)
+        viewModel.elegirSector(1) // mismo sector: el cultivo sigue elegido
+        assertEquals(5, viewModel.uiState.value.cultivoElegido)
+        viewModel.elegirTipo(TipoProblema.PLAGA_SIMULADA)
+        viewModel.escribirDescripcion("Hojas con manchas")
+        viewModel.reportarProblema(Datos.sofia)
+        assertNull(dao.problemas.value.single().fotografia)
+    }
+
+    @Test
+    fun elSeguimientoNecesitaUnProblemaElegidoYNoSeGuardaDosVeces() = runTest {
+        viewModel.guardarSeguimiento(Datos.docente) // sin problema elegido no pasa nada
+        assertEquals("", viewModel.uiState.value.aviso)
+
+        val cerrado = Problema(id = 8, sectorId = 1, tipo = TipoProblema.OTRO, descripcion = "Reja rota",
+            estado = EstadoProblema.ATENDIDO, fechaCierre = "2026-11-01T10:00:00")
+        dao.problemas.value = listOf(cerrado)
+        viewModel.iniciarSeguimiento(cerrado)
+        viewModel.elegirEstadoSeguimiento(EstadoProblema.CERRADO)
+        viewModel.escribirSeguimiento("Reja reparada")
+        dao.pausa = CompletableDeferred()
+        viewModel.guardarSeguimiento(Datos.docente)
+        viewModel.guardarSeguimiento(Datos.docente)
+        dao.pausa?.complete(Unit)
+        // Si ya tenía fecha de cierre, se conserva la original.
+        assertEquals("2026-11-01T10:00:00", dao.problemas.value.single().fechaCierre)
+        assertEquals(EstadoProblema.CERRADO, dao.problemas.value.single().estado)
+    }
+
+    @Test
+    fun siLaOperacionSeCancelaNoSeMuestraError() = runTest {
+        dao.cancelar = true
+        reportarFaltaDeAgua()
+        assertEquals("", viewModel.uiState.value.aviso)
+        dao.problemas.value = listOf(Problema(id = 8, sectorId = 1, tipo = TipoProblema.OTRO, descripcion = "Reja rota"))
+        viewModel.iniciarSeguimiento(dao.problemas.value.single())
+        viewModel.escribirSeguimiento("Revisado")
+        viewModel.guardarSeguimiento(Datos.docente)
+        assertEquals("", viewModel.uiState.value.aviso)
+        assertFalse(viewModel.uiState.value.guardando)
     }
 }

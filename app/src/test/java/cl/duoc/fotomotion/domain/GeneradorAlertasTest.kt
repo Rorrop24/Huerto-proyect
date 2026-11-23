@@ -88,4 +88,18 @@ class GeneradorAlertasTest {
         assertEquals(TipoAlerta.PROXIMA_COSECHA, alerta.tipo)
         assertEquals("La cosecha estimada era el 2026-11-05.", alerta.detalle)
     }
+
+    @Test
+    fun noAvisaMantenimientosYaEntregadosSinFechaOLejanos() {
+        val tareas = listOf(
+            Tarea(descripcion = "Revisado", sectorId = 1, fechaProgramada = "2026-11-15",
+                tipo = TipoTarea.MANTENIMIENTO, estado = EstadoTarea.VALIDADA),
+            Tarea(descripcion = "Rechazado", sectorId = 1, fechaProgramada = "2026-11-15",
+                tipo = TipoTarea.MANTENIMIENTO, estado = EstadoTarea.RECHAZADA),
+            Tarea(descripcion = "Sin fecha", sectorId = 1, fechaProgramada = "", tipo = TipoTarea.MANTENIMIENTO),
+            Tarea(descripcion = "Riego", sectorId = 1, fechaProgramada = "2026-11-15", tipo = TipoTarea.RIEGO)
+        )
+        val cosechaLejana = Cultivo(nombre = "Zapallo", sectorId = 1, fechaCosecha = "2027-03-01", frecuenciaRiegoDias = 0)
+        assertTrue(GeneradorAlertas.generar(hoy, tareas, listOf(cosechaLejana), emptyList()).isEmpty())
+    }
 }

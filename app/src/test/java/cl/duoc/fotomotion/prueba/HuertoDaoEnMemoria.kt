@@ -3,12 +3,16 @@ package cl.duoc.fotomotion.prueba
 import cl.duoc.fotomotion.data.local.HuertoDao
 import cl.duoc.fotomotion.domain.model.*
 import cl.duoc.fotomotion.domain.seguridad.CifradorContrasenas
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 
 // DAO falso: guarda todo en listas en memoria en vez de usar Room.
 // Con "fallar = true" cada escritura lanza un error para probar los mensajes de falla.
+// Con "cancelar = true" la operación se cancela (por ejemplo, si el usuario sale de la pantalla).
+// Con "pausa" la escritura queda esperando hasta completar la pausa, como una base lenta.
 class HuertoDaoEnMemoria : HuertoDao {
     val sectores = MutableStateFlow<List<Sector>>(emptyList())
     val cultivos = MutableStateFlow<List<Cultivo>>(emptyList())
@@ -16,9 +20,15 @@ class HuertoDaoEnMemoria : HuertoDao {
     val problemas = MutableStateFlow<List<Problema>>(emptyList())
     val usuarios = MutableStateFlow<List<Usuario>>(emptyList())
     var fallar = false
+    var cancelar = false
+    var pausa: CompletableDeferred<Unit>? = null
     private var siguienteId = 1
 
-    private fun revisarFalla() { if (fallar) throw IllegalStateException("Falla simulada de la base de datos") }
+    private suspend fun revisarFalla() {
+        pausa?.await()
+        if (cancelar) throw CancellationException("Operación cancelada")
+        if (fallar) throw IllegalStateException("Falla simulada de la base de datos")
+    }
 
     // Igual que Room: los registros nuevos reciben un id y la lista se ordena del más nuevo al más antiguo.
     override suspend fun agregarSector(sector: Sector) { revisarFalla(); sectores.value = listOf(sector.copy(id = siguienteId++)) + sectores.value }

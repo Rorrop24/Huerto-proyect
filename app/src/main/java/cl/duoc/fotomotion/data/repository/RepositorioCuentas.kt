@@ -1,7 +1,5 @@
 package cl.duoc.fotomotion.data.repository
 
-import android.content.Context
-import cl.duoc.fotomotion.data.local.BaseDatosHuerto
 import cl.duoc.fotomotion.data.local.HuertoDao
 import cl.duoc.fotomotion.domain.model.Cuenta
 import cl.duoc.fotomotion.domain.model.TipoCuenta
@@ -42,10 +40,5 @@ class RepositorioCuentas(
             rol = TipoCuenta.ALUMNO, hashContrasena = cifrada.hash, sal = cifrada.sal)
         val idCreado = dao.agregarUsuario(usuarioNuevo)
         return usuarioNuevo.copy(id = idCreado.toInt()).aCuenta()
-    }
-
-    companion object {
-        fun desdeContexto(contextoAplicacion: Context) =
-            RepositorioCuentas(BaseDatosHuerto.abrirBase(contextoAplicacion).huertoDao())
     }
 }

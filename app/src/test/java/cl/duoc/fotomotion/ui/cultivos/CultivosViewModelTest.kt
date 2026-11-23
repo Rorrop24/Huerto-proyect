@@ -1,5 +1,6 @@
 package cl.duoc.fotomotion.ui.cultivos
 
+import kotlinx.coroutines.CompletableDeferred
 import cl.duoc.fotomotion.domain.model.EstadoCultivo
 import cl.duoc.fotomotion.domain.model.Tarea
 import cl.duoc.fotomotion.domain.model.Sector
@@ -100,5 +101,59 @@ class CultivosViewModelTest {
         assertEquals("No se pudo eliminar el cultivo.", viewModel.uiState.value.aviso)
         viewModel.limpiarFormulario()
         assertEquals("", viewModel.uiState.value.textoNombre)
+    }
+
+    @Test
+    fun tocarGuardarDosVecesNoDuplicaElCultivo() = runTest {
+        llenarFormulario()
+        dao.pausa = CompletableDeferred()
+        viewModel.guardarCultivo(Datos.docente)
+        viewModel.guardarCultivo(Datos.docente)
+        dao.pausa?.complete(Unit)
+        assertEquals(1, dao.cultivos.value.size)
+    }
+
+    @Test
+    fun guardaElTrasplanteSoloSiSeEscribe() = runTest {
+        llenarFormulario()
+        viewModel.escribirFechaTrasplante("2026-09-15")
+        viewModel.escribirFechaCosecha(" ")
+        viewModel.guardarCultivo(Datos.docente)
+        val guardado = dao.cultivos.value.single()
+        assertEquals("2026-09-15", guardado.fechaTrasplante)
+        assertNull(guardado.fechaCosecha)
+    }
+
+    @Test
+    fun editarUnCultivoSinFechasDejaLosCamposVacios() = runTest {
+        viewModel.editarCultivo(Cultivo(id = 3, nombre = "Papa", sectorId = 1, frecuenciaRiegoDias = 4))
+        val estado = viewModel.uiState.value
+        assertEquals("", estado.textoFechaSiembra)
+        assertEquals("", estado.textoFechaTrasplante)
+        assertEquals("", estado.textoFechaCosecha)
+        assertEquals("4", estado.textoRiego)
+        viewModel.editarCultivo(Cultivo(id = 3, nombre = "Papa", sectorId = 1, fechaSiembra = "2026-09-01",
+            fechaTrasplante = "2026-09-10", fechaCosecha = "2026-12-01", frecuenciaRiegoDias = 4))
+        assertEquals("2026-09-10", viewModel.uiState.value.textoFechaTrasplante)
+    }
+
+    @Test
+    fun eliminarOtroCultivoNoBorraElFormularioEnEdicion() = runTest {
+        dao.cultivos.value = listOf(Cultivo(id = 3, nombre = "Papa", sectorId = 1, frecuenciaRiegoDias = 4),
+            Cultivo(id = 4, nombre = "Haba", sectorId = 1, frecuenciaRiegoDias = 4))
+        viewModel.editarCultivo(dao.cultivos.value.first())
+        viewModel.eliminarCultivo(dao.cultivos.value.last())
+        assertEquals("Papa", viewModel.uiState.value.textoNombre)
+        assertEquals("Cultivo eliminado.", viewModel.uiState.value.aviso)
+    }
+
+    @Test
+    fun siLaOperacionSeCancelaNoSeMuestraError() = runTest {
+        llenarFormulario()
+        dao.cancelar = true
+        viewModel.guardarCultivo(Datos.docente)
+        viewModel.eliminarCultivo(Cultivo(id = 1, sectorId = 1, frecuenciaRiegoDias = 1))
+        assertEquals("", viewModel.uiState.value.aviso)
+        assertFalse(viewModel.uiState.value.guardando)
     }
 }

@@ -1,5 +1,6 @@
 package cl.duoc.fotomotion.ui.tareas
 
+import kotlinx.coroutines.CompletableDeferred
 import cl.duoc.fotomotion.domain.model.EstadoTarea
 import cl.duoc.fotomotion.domain.model.Tarea
 import cl.duoc.fotomotion.domain.model.Sector
@@ -151,5 +152,62 @@ class TareasViewModelTest {
         assertEquals("No se pudo eliminar la tarea.", viewModel.uiState.value.aviso)
         viewModel.limpiarFormulario()
         assertEquals("", viewModel.uiState.value.textoDescripcion)
+    }
+
+    @Test
+    fun tocarGuardarDosVecesNoDuplicaLaTarea() = runTest {
+        dao.pausa = CompletableDeferred()
+        crearTareaParaMateo()
+        viewModel.guardarTarea(Datos.docente)
+        dao.pausa?.complete(Unit)
+        assertEquals(1, dao.tareas.value.size)
+    }
+
+    @Test
+    fun elCultivoDelMismoSectorSeMantieneYEditarSinEstudianteLoDejaVacio() = runTest {
+        viewModel.abrirFormularioNuevo()
+        viewModel.elegirSector(1)
+        viewModel.elegirCultivo(5)
+        viewModel.elegirSector(1)
+        assertEquals(5, viewModel.uiState.value.cultivoElegido)
+        viewModel.editarTarea(Tarea(id = 4, descripcion = "Limpiar", sectorId = 1, responsableId = ""))
+        assertNull(viewModel.uiState.value.estudianteAsignado)
+    }
+
+    @Test
+    fun laEntregaNecesitaTareaElegidaYNoLaHaceElDocente() = runTest {
+        viewModel.entregarTarea(Datos.mateo) // sin tarea elegida no pasa nada
+        assertEquals("", viewModel.uiState.value.aviso)
+        crearTareaParaMateo()
+        viewModel.iniciarEntrega(tareaGuardada())
+        viewModel.adjuntarFoto("content://foto/1")
+        viewModel.escribirComentario("Regué todo")
+        viewModel.entregarTarea(Datos.docente)
+        assertEquals(EstadoTarea.PENDIENTE, tareaGuardada().estado)
+
+        // Tocar "Enviar" dos veces solo envía una vez.
+        dao.pausa = CompletableDeferred()
+        viewModel.entregarTarea(Datos.mateo)
+        viewModel.entregarTarea(Datos.mateo)
+        val entregada = dao.tareas.value.single().copy(estado = EstadoTarea.PENDIENTE_DE_VALIDACION)
+        viewModel.revisarEntrega(entregada, aceptarTrabajo = true, cuentaResponsable = Datos.docente) // ignorada: aún guardando
+        dao.pausa?.complete(Unit)
+        assertEquals(EstadoTarea.PENDIENTE_DE_VALIDACION, tareaGuardada().estado)
+    }
+
+    @Test
+    fun eliminarOtraTareaNoBorraElFormularioYCancelarNoMuestraError() = runTest {
+        dao.tareas.value = listOf(Tarea(id = 1, descripcion = "Regar", sectorId = 1, responsableId = "USR-002"),
+            Tarea(id = 2, descripcion = "Limpiar", sectorId = 1, responsableId = "USR-002"))
+        viewModel.editarTarea(dao.tareas.value.first())
+        viewModel.eliminarTarea(dao.tareas.value.last())
+        assertEquals("Regar", viewModel.uiState.value.textoDescripcion)
+
+        dao.cancelar = true
+        viewModel.informar("")
+        viewModel.guardarTarea(Datos.docente)
+        viewModel.eliminarTarea(dao.tareas.value.first())
+        assertEquals("", viewModel.uiState.value.aviso)
+        assertFalse(viewModel.uiState.value.guardando)
     }
 }

@@ -1,5 +1,6 @@
 package cl.duoc.fotomotion.ui.acceso
 
+import kotlinx.coroutines.CompletableDeferred
 import cl.duoc.fotomotion.domain.model.TipoCuenta
 import cl.duoc.fotomotion.prueba.HuertoDaoEnMemoria
 import cl.duoc.fotomotion.prueba.Datos
@@ -102,6 +103,38 @@ class AccesoViewModelTest {
         viewModel.escribirConfirmacion("Huerto123")
         viewModel.registrarse()
         assertEquals("No se pudo crear la cuenta. Intenta nuevamente.", viewModel.uiState.value.aviso)
+        assertFalse(viewModel.uiState.value.procesando)
+    }
+
+    @Test
+    fun tocarIngresarORegistrarseDosVecesSoloConsultaUnaVez() = runTest {
+        viewModel.escribirCorreo("docente@huerto.cl")
+        viewModel.escribirContrasena("Docente2026")
+        dao.pausa = CompletableDeferred()
+        viewModel.ingresar()
+        assertTrue(viewModel.uiState.value.procesando)
+        viewModel.ingresar()
+        viewModel.registrarse()
+        dao.pausa?.complete(Unit)
+        assertEquals("USR-001", viewModel.uiState.value.cuentaActiva?.codigo)
+        assertFalse(viewModel.uiState.value.procesando)
+    }
+
+    @Test
+    fun siLaOperacionSeCancelaNoSeMuestraError() = runTest {
+        dao.cancelar = true
+        viewModel.escribirCorreo("docente@huerto.cl")
+        viewModel.escribirContrasena("Docente2026")
+        viewModel.ingresar()
+        assertEquals("", viewModel.uiState.value.aviso)
+        viewModel.cambiarModo(ModoAcceso.REGISTRARSE)
+        viewModel.escribirNombre("Ana Pérez")
+        viewModel.escribirCorreo("ana@huerto.cl")
+        viewModel.escribirContrasena("Huerto123")
+        viewModel.escribirConfirmacion("Huerto123")
+        viewModel.registrarse()
+        assertEquals("", viewModel.uiState.value.aviso)
+        assertNull(viewModel.uiState.value.cuentaActiva)
         assertFalse(viewModel.uiState.value.procesando)
     }
 }

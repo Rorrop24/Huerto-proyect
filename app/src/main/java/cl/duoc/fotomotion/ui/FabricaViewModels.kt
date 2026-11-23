@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import cl.duoc.fotomotion.data.local.BaseDatosHuerto
 import cl.duoc.fotomotion.data.repository.RepositorioCuentas
 import cl.duoc.fotomotion.data.repository.RepositorioHuerto
 import cl.duoc.fotomotion.ui.acceso.AccesoViewModel
@@ -27,7 +28,9 @@ object FabricaViewModels {
         initializer { LecturasViewModel() }
     }
 
-    private fun CreationExtras.repositorio() = RepositorioHuerto.desdeContexto(aplicacion())
-    private fun CreationExtras.repositorioCuentas() = RepositorioCuentas.desdeContexto(aplicacion())
-    private fun CreationExtras.aplicacion() = checkNotNull(this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY])
+    // Los repositorios reciben el DAO de la base Room de la app.
+    private fun CreationExtras.repositorio() = RepositorioHuerto(dao())
+    private fun CreationExtras.repositorioCuentas() = RepositorioCuentas(dao())
+    private fun CreationExtras.dao() =
+        BaseDatosHuerto.abrirBase(checkNotNull(this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY])).huertoDao()
 }

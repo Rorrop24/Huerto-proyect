@@ -1,7 +1,5 @@
 package cl.duoc.fotomotion.data.repository
 
-import android.content.Context
-import cl.duoc.fotomotion.data.local.BaseDatosHuerto
 import cl.duoc.fotomotion.data.local.HuertoDao
 import cl.duoc.fotomotion.domain.model.Tarea
 import cl.duoc.fotomotion.domain.model.Sector
@@ -38,10 +36,4 @@ class RepositorioHuerto(private val dao: HuertoDao) {
     fun leerProblemas() = dao.observarProblemas()
     suspend fun registrarProblema(problema: Problema) = dao.agregarProblema(problema)
     suspend fun actualizarProblema(problema: Problema) = dao.actualizarProblema(problema)
-
-    companion object {
-        // Punto único para crear el repositorio sobre la base local compartida.
-        fun desdeContexto(contextoAplicacion: Context) =
-            RepositorioHuerto(BaseDatosHuerto.abrirBase(contextoAplicacion).huertoDao())
-    }
 }
