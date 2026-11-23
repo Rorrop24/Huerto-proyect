@@ -1,121 +1,101 @@
 package cl.duoc.fotomotion.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
+import cl.duoc.fotomotion.ui.FabricaViewModels
 import cl.duoc.fotomotion.ui.acceso.AccesoViewModel
 import cl.duoc.fotomotion.ui.acceso.PantallaAcceso
 import cl.duoc.fotomotion.ui.alertas.AlertasViewModel
 import cl.duoc.fotomotion.ui.alertas.PantallaAlertas
-import cl.duoc.fotomotion.ui.labores.LaboresViewModel
-import cl.duoc.fotomotion.ui.labores.PantallaLabores
+import cl.duoc.fotomotion.ui.inicio.PantallaInicio
+import cl.duoc.fotomotion.ui.tareas.TareasViewModel
+import cl.duoc.fotomotion.ui.tareas.PantallaTareas
 import cl.duoc.fotomotion.ui.lecturas.LecturasViewModel
 import cl.duoc.fotomotion.ui.lecturas.PantallaLecturas
-import cl.duoc.fotomotion.ui.parcelas.PantallaParcelas
-import cl.duoc.fotomotion.ui.parcelas.ParcelasViewModel
+import cl.duoc.fotomotion.ui.sectores.PantallaSectores
+import cl.duoc.fotomotion.ui.sectores.SectoresViewModel
 import cl.duoc.fotomotion.ui.problemas.PantallaProblemas
 import cl.duoc.fotomotion.ui.problemas.ProblemasViewModel
-import cl.duoc.fotomotion.ui.siembras.PantallaSiembras
-import cl.duoc.fotomotion.ui.siembras.SiembrasViewModel
+import cl.duoc.fotomotion.ui.cultivos.PantallaCultivos
+import cl.duoc.fotomotion.ui.cultivos.CultivosViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Punto de entrada de la interfaz: crea los ViewModels, decide la pantalla según la sesión y arma las barras.
 @Composable
 fun RecorridoHuerto() {
-    val controlAcceso: AccesoViewModel = viewModel()
-    val controlParcelas: ParcelasViewModel = viewModel()
-    val controlSiembras: SiembrasViewModel = viewModel()
-    val controlLabores: LaboresViewModel = viewModel()
-    val controlLecturas: LecturasViewModel = viewModel()
-    val controlProblemas: ProblemasViewModel = viewModel()
-    val controlAlertas: AlertasViewModel = viewModel()
-    val listaAlertas by controlAlertas.alertasVisibles.collectAsState()
-    val cuentaActual by controlAcceso.cuentaActiva.collectAsState()
+    val accesoViewModel: AccesoViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val sectoresViewModel: SectoresViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val cultivosViewModel: CultivosViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val tareasViewModel: TareasViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val lecturasViewModel: LecturasViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val problemasViewModel: ProblemasViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val alertasViewModel: AlertasViewModel = viewModel(factory = FabricaViewModels.fabrica)
+    val accesoUiState by accesoViewModel.uiState.collectAsState()
+    val alertasUiState by alertasViewModel.uiState.collectAsState()
+    val cuentaActual = accesoUiState.cuentaActiva
     val navegador = rememberNavController()
     val entradaActual by navegador.currentBackStackEntryAsState()
     val rutaVisible = entradaActual?.destination?.route ?: RutasHuerto.ACCESO
 
-    // Al reiniciar el proceso se vuelve a elegir una cuenta de demostración.
+    // Al iniciar sesión se entra al inicio; al cerrarla (o si se pierde la sesión) se vuelve al acceso.
+    // Se lee la ruta actual del navegador (no la de la composición) para no moverse al girar la pantalla.
     LaunchedEffect(cuentaActual) {
-        if (cuentaActual == null && rutaVisible != RutasHuerto.ACCESO) {
+        alertasViewModel.mostrarPara(cuentaActual)
+        val rutaActual = navegador.currentDestination?.route
+        if (cuentaActual != null && rutaActual == RutasHuerto.ACCESO) {
+            navegador.navigate(RutasHuerto.INICIO) { popUpTo(RutasHuerto.ACCESO) { inclusive = true } }
+        }
+        if (cuentaActual == null && rutaActual != null && rutaActual != RutasHuerto.ACCESO) {
             navegador.navigate(RutasHuerto.ACCESO) { popUpTo(navegador.graph.id) { inclusive = true } }
         }
     }
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(when (rutaVisible) {
-                RutasHuerto.PARCELAS -> "Sectores del huerto"
-                RutasHuerto.SIEMBRAS -> "Cultivos del huerto"
-                RutasHuerto.LABORES -> "Tareas del huerto"
-                RutasHuerto.PROBLEMAS -> "Problemas del huerto"
-                RutasHuerto.ALERTAS -> "Recordatorios"
-                RutasHuerto.LECTURAS -> "Lecturas de ejemplo"
-                else -> "Huerto Escolar"
-            }) }, actions = {
-                if (cuentaActual != null) {
-                    IconButton(onClick = { navegador.navigate(RutasHuerto.ALERTAS) { launchSingleTop = true } }) {
-                        BadgedBox(badge = { if (listaAlertas.isNotEmpty()) Badge { Text("${listaAlertas.size}") } }) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Recordatorios")
-                        }
-                    }
-                    TextButton(onClick = {
-                        controlParcelas.limpiarParcela()
-                        controlSiembras.limpiarSiembra()
-                        controlLabores.limpiarLabor()
-                        controlProblemas.limpiarFormulario()
-                        controlAcceso.salirDeCuenta()
-                    }) { Text("Salir") }
-                }
-            })
+            BarraSuperiorHuerto(rutaVisible, cuentaActual, alertasUiState.cantidad,
+                alAbrirAlertas = { navegador.navigate(RutasHuerto.ALERTAS) { launchSingleTop = true } },
+                alSalir = {
+                    // Cerrar sesión deja todos los formularios vacíos para el siguiente usuario.
+                    sectoresViewModel.limpiarFormulario()
+                    cultivosViewModel.limpiarFormulario()
+                    tareasViewModel.limpiarFormulario()
+                    problemasViewModel.limpiarFormulario()
+                    accesoViewModel.salirDeCuenta()
+                })
         },
         bottomBar = {
-            if (cuentaActual != null && rutaVisible != RutasHuerto.ACCESO) NavigationBar {
-                RutasHuerto.menu.forEach { rutaMenu ->
-                    val tituloMenu = when (rutaMenu) {
-                        RutasHuerto.PARCELAS -> "Sectores"
-                        RutasHuerto.SIEMBRAS -> "Cultivos"
-                        RutasHuerto.LABORES -> "Tareas"
-                        RutasHuerto.PROBLEMAS -> "Problemas"
-                        else -> "Lecturas"
+            if (cuentaActual != null && rutaVisible != RutasHuerto.ACCESO) {
+                BarraInferiorHuerto(rutaVisible) { rutaMenu ->
+                    navegador.navigate(rutaMenu) {
+                        popUpTo(RutasHuerto.INICIO)
+                        launchSingleTop = true
                     }
-                    NavigationBarItem(selected = rutaVisible == rutaMenu,
-                        onClick = {
-                            navegador.navigate(rutaMenu) {
-                                popUpTo(RutasHuerto.PARCELAS)
-                                launchSingleTop = true
-                            }
-                        }, label = { Text(tituloMenu) }, icon = {
-                            Icon(when (rutaMenu) {
-                                RutasHuerto.PARCELAS -> Icons.Default.Home
-                                RutasHuerto.SIEMBRAS -> Icons.AutoMirrored.Filled.List
-                                RutasHuerto.LABORES -> Icons.Default.Build
-                                RutasHuerto.PROBLEMAS -> Icons.Default.Warning
-                                else -> Icons.Default.Info
-                            }, contentDescription = tituloMenu)
-                        })
                 }
             }
         }
     ) { espacioPantalla ->
         NavHost(navController = navegador, startDestination = RutasHuerto.ACCESO,
-            modifier = Modifier.fillMaxSize().padding(espacioPantalla).consumeWindowInsets(espacioPantalla).imePadding()) {
-            composable(RutasHuerto.ACCESO) {
-                PantallaAcceso(controlAcceso) { cuentaElegida ->
-                    controlAcceso.entrarConCuenta(cuentaElegida)
-                    navegador.navigate(RutasHuerto.PARCELAS) { popUpTo(RutasHuerto.ACCESO) { inclusive = true } }
+            modifier = Modifier.fillMaxSize().padding(espacioPantalla).consumeWindowInsets(espacioPantalla).imePadding(),
+            enterTransition = { fadeIn(tween(220)) }, exitTransition = { fadeOut(tween(180)) }) {
+            composable(RutasHuerto.ACCESO) { PantallaAcceso(accesoViewModel) }
+            composable(RutasHuerto.INICIO) {
+                cuentaActual?.let { cuenta ->
+                    PantallaInicio(cuenta, alertasUiState.cantidad) { ruta ->
+                        navegador.navigate(ruta) { launchSingleTop = true }
+                    }
                 }
             }
-            composable(RutasHuerto.PARCELAS) { cuentaActual?.let { cuenta -> PantallaParcelas(controlParcelas, cuenta) } }
-            composable(RutasHuerto.SIEMBRAS) { cuentaActual?.let { cuenta -> PantallaSiembras(controlSiembras, cuenta) } }
-            composable(RutasHuerto.LABORES) { cuentaActual?.let { cuenta -> PantallaLabores(controlLabores, cuenta) } }
-            composable(RutasHuerto.PROBLEMAS) { cuentaActual?.let { cuenta -> PantallaProblemas(controlProblemas, cuenta) } }
-            composable(RutasHuerto.LECTURAS) { if (cuentaActual != null) PantallaLecturas(controlLecturas) }
-            composable(RutasHuerto.ALERTAS) { if (cuentaActual != null) PantallaAlertas(controlAlertas) }
+            composable(RutasHuerto.SECTORES) { cuentaActual?.let { cuenta -> PantallaSectores(sectoresViewModel, cuenta) } }
+            composable(RutasHuerto.CULTIVOS) { cuentaActual?.let { cuenta -> PantallaCultivos(cultivosViewModel, cuenta) } }
+            composable(RutasHuerto.TAREAS) { cuentaActual?.let { cuenta -> PantallaTareas(tareasViewModel, cuenta) } }
+            composable(RutasHuerto.PROBLEMAS) { cuentaActual?.let { cuenta -> PantallaProblemas(problemasViewModel, cuenta) } }
+            composable(RutasHuerto.LECTURAS) { if (cuentaActual != null) PantallaLecturas(lecturasViewModel) }
+            composable(RutasHuerto.ALERTAS) { if (cuentaActual != null) PantallaAlertas(alertasViewModel) }
         }
     }
 }

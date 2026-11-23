@@ -1,150 +1,149 @@
 package cl.duoc.fotomotion.ui.problemas
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.fotomotion.data.repository.RepositorioHuerto
-import cl.duoc.fotomotion.domain.model.CuentaHuerto
+import cl.duoc.fotomotion.domain.model.Cuenta
 import cl.duoc.fotomotion.domain.model.EstadoProblema
-import cl.duoc.fotomotion.domain.model.ProblemaHuerto
-import cl.duoc.fotomotion.domain.model.TipoCuenta
+import cl.duoc.fotomotion.domain.model.Problema
 import cl.duoc.fotomotion.domain.model.TipoProblema
-import cl.duoc.fotomotion.domain.validation.ValidacionesHuerto
+import cl.duoc.fotomotion.domain.validation.ValidadorProblemas
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
-class ProblemasViewModel(aplicacion: Application) : AndroidViewModel(aplicacion) {
-    private val repositorio = RepositorioHuerto.desdeContexto(aplicacion)
-    private val estadoMutable = MutableStateFlow(EstadoProblemas())
-    val estadoProblemas = estadoMutable.asStateFlow()
+// Recibe el repositorio desde afuera: en la app lo entrega FabricaViewModels y en las pruebas uno con datos en memoria.
+class ProblemasViewModel(private val repositorio: RepositorioHuerto) : ViewModel() {
+    private val _uiState = MutableStateFlow(ProblemasUiState())
+    val uiState: StateFlow<ProblemasUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             repositorio.leerProblemas().collect { problemasRecibidos ->
-                estadoMutable.value = estadoMutable.value.copy(listaProblemas = problemasRecibidos)
+                _uiState.value = _uiState.value.copy(problemas = problemasRecibidos)
             }
         }
         viewModelScope.launch {
-            repositorio.leerParcelas().collect { parcelasRecibidas ->
-                estadoMutable.value = estadoMutable.value.copy(sectoresDisponibles = parcelasRecibidas)
+            repositorio.leerSectores().collect { sectoresRecibidos ->
+                _uiState.value = _uiState.value.copy(sectores = sectoresRecibidos)
             }
         }
         viewModelScope.launch {
-            repositorio.leerSiembras().collect { siembrasRecibidas ->
-                estadoMutable.value = estadoMutable.value.copy(cultivosDisponibles = siembrasRecibidas)
+            repositorio.leerCultivos().collect { cultivosRecibidos ->
+                _uiState.value = _uiState.value.copy(cultivos = cultivosRecibidos)
             }
         }
+    }
+
+    // Un reporte nuevo siempre empieza con el formulario vacío.
+    fun abrirReporte() {
+        limpiarFormulario()
+        _uiState.value = _uiState.value.copy(formularioVisible = true)
     }
 
     fun elegirSector(codigoElegido: Int) {
-        val formulario = estadoMutable.value
+        val formulario = _uiState.value
         // Al cambiar de sector se quita el cultivo si pertenecía a otro sector.
         val cultivoVigente = formulario.cultivoElegido?.takeIf { codigoCultivo ->
-            formulario.cultivosDisponibles.any { siembra -> siembra.codigoSiembra == codigoCultivo && siembra.parcelaAsociada == codigoElegido }
+            formulario.cultivos.any { cultivo -> cultivo.id == codigoCultivo && cultivo.sectorId == codigoElegido }
         }
-        estadoMutable.value = formulario.copy(sectorElegido = codigoElegido, cultivoElegido = cultivoVigente,
-            errorSector = "", errorCultivo = "", avisoProblemas = "")
+        _uiState.value = formulario.copy(sectorElegido = codigoElegido, cultivoElegido = cultivoVigente,
+            errorSector = "", errorCultivo = "", aviso = "")
     }
     fun elegirCultivo(codigoElegido: Int?) {
-        estadoMutable.value = estadoMutable.value.copy(cultivoElegido = codigoElegido, errorCultivo = "")
+        _uiState.value = _uiState.value.copy(cultivoElegido = codigoElegido, errorCultivo = "")
     }
     fun elegirTipo(tipoNuevo: TipoProblema) {
-        estadoMutable.value = estadoMutable.value.copy(tipoElegido = tipoNuevo, errorTipo = "")
+        _uiState.value = _uiState.value.copy(tipoElegido = tipoNuevo, errorTipo = "")
     }
     fun escribirDescripcion(textoNuevo: String) {
-        estadoMutable.value = estadoMutable.value.copy(textoDescripcion = textoNuevo, errorDescripcion = "")
+        _uiState.value = _uiState.value.copy(textoDescripcion = textoNuevo, errorDescripcion = "")
     }
     fun adjuntarFoto(direccionElegida: String) {
-        estadoMutable.value = estadoMutable.value.copy(direccionFoto = direccionElegida)
+        _uiState.value = _uiState.value.copy(direccionFoto = direccionElegida)
     }
-    fun informarProblema(mensajeNuevo: String) {
-        estadoMutable.value = estadoMutable.value.copy(avisoProblemas = mensajeNuevo)
+    fun informar(mensajeNuevo: String) {
+        _uiState.value = _uiState.value.copy(aviso = mensajeNuevo)
     }
 
     fun revisarReporte(): Boolean {
-        val formulario = estadoMutable.value
-        val problemaSector = ValidacionesHuerto.revisarSector(formulario.sectorElegido, formulario.sectoresDisponibles,
-            "Selecciona el sector afectado.")
-        val problemaCultivo = ValidacionesHuerto.revisarCultivo(formulario.cultivoElegido, formulario.sectorElegido,
-            formulario.cultivosDisponibles)
-        val problemaTipo = if (formulario.tipoElegido == null) "Elige el tipo de problema." else ""
-        val problemaDescripcion = ValidacionesHuerto.revisarTexto(formulario.textoDescripcion, 5, 200,
-            "Describe brevemente el problema.")
-        estadoMutable.value = formulario.copy(errorSector = problemaSector, errorCultivo = problemaCultivo,
-            errorTipo = problemaTipo, errorDescripcion = problemaDescripcion)
-        return listOf(problemaSector, problemaCultivo, problemaTipo, problemaDescripcion).all { problema -> problema.isEmpty() }
+        val formulario = _uiState.value
+        val errores = ValidadorProblemas.validarReporte(formulario.sectorElegido, formulario.sectores,
+            formulario.cultivoElegido, formulario.cultivos, formulario.tipoElegido, formulario.textoDescripcion)
+        _uiState.value = formulario.copy(errorSector = errores.sector, errorCultivo = errores.cultivo,
+            errorTipo = errores.tipo, errorDescripcion = errores.descripcion)
+        return errores.esValido
     }
 
-    fun reportarProblema(cuentaAutora: CuentaHuerto) {
-        if (estadoMutable.value.guardandoProblema || !revisarReporte()) return
-        val formulario = estadoMutable.value
+    fun reportarProblema(cuentaAutora: Cuenta) {
+        if (_uiState.value.guardando || !revisarReporte()) return
+        val formulario = _uiState.value
         val codigoSector = formulario.sectorElegido ?: return
         val tipoProblema = formulario.tipoElegido ?: return
-        val registroNuevo = ProblemaHuerto(parcelaAfectada = codigoSector, siembraAfectada = formulario.cultivoElegido,
-            claseProblema = tipoProblema.name, detalleProblema = formulario.textoDescripcion.trim(),
-            momentoReporte = LocalDateTime.now().withNano(0).toString(), autorReporte = cuentaAutora.codigoCuenta,
-            imagenProblema = formulario.direccionFoto.ifBlank { null }, situacionProblema = EstadoProblema.INFORMADO.name)
-        estadoMutable.value = formulario.copy(guardandoProblema = true)
+        val registroNuevo = Problema(sectorId = codigoSector, cultivoId = formulario.cultivoElegido,
+            tipo = tipoProblema, descripcion = formulario.textoDescripcion.trim(),
+            fechaReporte = LocalDateTime.now().withNano(0).toString(), autorId = cuentaAutora.codigo,
+            fotografia = formulario.direccionFoto.ifBlank { null }, estado = EstadoProblema.INFORMADO)
+        _uiState.value = formulario.copy(guardando = true)
         viewModelScope.launch {
             try {
                 repositorio.registrarProblema(registroNuevo)
                 limpiarFormulario()
-                informarProblema("Problema reportado. El docente lo revisará.")
+                informar("Problema reportado. El docente lo revisará.")
             } catch (problema: Exception) {
                 if (problema is CancellationException) throw problema
-                informarProblema("No se pudo reportar el problema.")
-            } finally { estadoMutable.value = estadoMutable.value.copy(guardandoProblema = false) }
+                informar("No se pudo reportar el problema.")
+            } finally { _uiState.value = _uiState.value.copy(guardando = false) }
         }
     }
 
-    fun iniciarSeguimiento(registroElegido: ProblemaHuerto) {
-        estadoMutable.value = estadoMutable.value.copy(problemaEnSeguimiento = registroElegido,
-            estadoSeguimiento = EstadoProblema.desde(registroElegido.situacionProblema),
-            textoSeguimiento = registroElegido.notaSeguimiento ?: "", errorSeguimiento = "", avisoProblemas = "")
+    fun iniciarSeguimiento(registroElegido: Problema) {
+        _uiState.value = _uiState.value.copy(problemaEnSeguimiento = registroElegido,
+            estadoSeguimiento = registroElegido.estado,
+            textoSeguimiento = registroElegido.comentarioDocente ?: "", errorSeguimiento = "", aviso = "")
     }
     fun elegirEstadoSeguimiento(estadoNuevo: EstadoProblema) {
-        estadoMutable.value = estadoMutable.value.copy(estadoSeguimiento = estadoNuevo)
+        _uiState.value = _uiState.value.copy(estadoSeguimiento = estadoNuevo)
     }
     fun escribirSeguimiento(textoNuevo: String) {
-        estadoMutable.value = estadoMutable.value.copy(textoSeguimiento = textoNuevo, errorSeguimiento = "")
+        _uiState.value = _uiState.value.copy(textoSeguimiento = textoNuevo, errorSeguimiento = "")
     }
     fun cancelarSeguimiento() {
-        estadoMutable.value = estadoMutable.value.copy(problemaEnSeguimiento = null, textoSeguimiento = "", errorSeguimiento = "")
+        _uiState.value = _uiState.value.copy(problemaEnSeguimiento = null, textoSeguimiento = "", errorSeguimiento = "")
     }
 
-    fun guardarSeguimiento(cuentaResponsable: CuentaHuerto) {
-        val formulario = estadoMutable.value
-        if (cuentaResponsable.tipoCuenta != TipoCuenta.DOCENTE || formulario.guardandoProblema) return
+    fun guardarSeguimiento(cuentaResponsable: Cuenta) {
+        val formulario = _uiState.value
+        if (!cuentaResponsable.esDocente || formulario.guardando) return
         val problemaElegido = formulario.problemaEnSeguimiento ?: return
-        val problemaComentario = if (formulario.textoSeguimiento.isBlank()) ""
-            else ValidacionesHuerto.revisarTexto(formulario.textoSeguimiento, 3, 200, "")
+        val problemaComentario = ValidadorProblemas.validarSeguimiento(formulario.textoSeguimiento)
         if (problemaComentario.isNotEmpty()) {
-            estadoMutable.value = formulario.copy(errorSeguimiento = problemaComentario)
+            _uiState.value = formulario.copy(errorSeguimiento = problemaComentario)
             return
         }
         // La fecha de atención se registra la primera vez que el problema queda atendido o cerrado.
-        val momentoCierre = if (formulario.estadoSeguimiento.resuelto)
-            problemaElegido.momentoCierre ?: LocalDateTime.now().withNano(0).toString() else null
-        estadoMutable.value = formulario.copy(guardandoProblema = true)
+        val fechaCierre = if (formulario.estadoSeguimiento.resuelto)
+            problemaElegido.fechaCierre ?: LocalDateTime.now().withNano(0).toString() else null
+        _uiState.value = formulario.copy(guardando = true)
         viewModelScope.launch {
             try {
-                repositorio.corregirProblema(problemaElegido.copy(situacionProblema = formulario.estadoSeguimiento.name,
-                    notaSeguimiento = formulario.textoSeguimiento.trim().ifBlank { null }, momentoCierre = momentoCierre))
+                repositorio.actualizarProblema(problemaElegido.copy(estado = formulario.estadoSeguimiento,
+                    comentarioDocente = formulario.textoSeguimiento.trim().ifBlank { null }, fechaCierre = fechaCierre))
                 cancelarSeguimiento()
-                informarProblema("Seguimiento guardado.")
+                informar("Seguimiento guardado.")
             } catch (problema: Exception) {
                 if (problema is CancellationException) throw problema
-                informarProblema("No se pudo guardar el seguimiento.")
-            } finally { estadoMutable.value = estadoMutable.value.copy(guardandoProblema = false) }
+                informar("No se pudo guardar el seguimiento.")
+            } finally { _uiState.value = _uiState.value.copy(guardando = false) }
         }
     }
 
     fun limpiarFormulario() {
-        val actual = estadoMutable.value
-        estadoMutable.value = EstadoProblemas(listaProblemas = actual.listaProblemas,
-            sectoresDisponibles = actual.sectoresDisponibles, cultivosDisponibles = actual.cultivosDisponibles)
+        val actual = _uiState.value
+        _uiState.value = ProblemasUiState(problemas = actual.problemas,
+            sectores = actual.sectores, cultivos = actual.cultivos)
     }
 }

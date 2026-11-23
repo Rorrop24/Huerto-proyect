@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -60,6 +61,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test)
     androidTestImplementation(libs.androidx.test.runner)
@@ -69,4 +71,26 @@ dependencies {
 }
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// Kover mide qué parte de la lógica ejecutan las pruebas unitarias.
+// Reporte: .\gradlew.bat :app:koverHtmlReportDebug  ->  app/build/reports/kover/htmlDebug/index.html
+kover {
+    reports {
+        filters {
+            includes {
+                // Lógica de la app: reglas y modelos (domain), repositorio, convertidores de Room y ViewModels.
+                classes(
+                    "cl.duoc.fotomotion.domain.*",
+                    "cl.duoc.fotomotion.data.repository.*",
+                    "cl.duoc.fotomotion.data.local.ConvertidoresHuerto",
+                    "cl.duoc.fotomotion.ui.*ViewModel*"
+                )
+            }
+            excludes {
+                // Solo conecta los ViewModels con Android al crearlos; no tiene lógica que probar.
+                classes("cl.duoc.fotomotion.ui.FabricaViewModels*")
+            }
+        }
+    }
 }

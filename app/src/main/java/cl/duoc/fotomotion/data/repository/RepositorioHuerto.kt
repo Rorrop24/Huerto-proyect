@@ -1,45 +1,47 @@
 package cl.duoc.fotomotion.data.repository
 
 import android.content.Context
-import cl.duoc.fotomotion.data.local.BaseHuerto
-import cl.duoc.fotomotion.data.local.ConsultasHuerto
-import cl.duoc.fotomotion.domain.model.LaborHuerto
-import cl.duoc.fotomotion.domain.model.ParcelaHuerto
-import cl.duoc.fotomotion.domain.model.ProblemaHuerto
-import cl.duoc.fotomotion.domain.model.SiembraHuerto
+import cl.duoc.fotomotion.data.local.BaseDatosHuerto
+import cl.duoc.fotomotion.data.local.HuertoDao
+import cl.duoc.fotomotion.domain.model.Tarea
+import cl.duoc.fotomotion.domain.model.Sector
+import cl.duoc.fotomotion.domain.model.Problema
+import cl.duoc.fotomotion.domain.model.Cultivo
 
-class RepositorioHuerto(private val consultasLocales: ConsultasHuerto) {
-    fun leerParcelas() = consultasLocales.observarParcelas()
-    suspend fun registrarParcela(datoParcela: ParcelaHuerto) = consultasLocales.agregarParcela(datoParcela)
-    suspend fun corregirParcela(datoParcela: ParcelaHuerto) = consultasLocales.modificarParcela(datoParcela)
-    suspend fun borrarParcela(datoParcela: ParcelaHuerto): Boolean {
-        if (consultasLocales.contarSiembrasDeParcela(datoParcela.codigoParcela) > 0 ||
-            consultasLocales.contarLaboresDeParcela(datoParcela.codigoParcela) > 0) return false
-        consultasLocales.quitarParcela(datoParcela)
+// Datos del huerto: sectores, cultivos, tareas y problemas.
+// Las cuentas de usuario (login y registro) están en RepositorioCuentas.
+class RepositorioHuerto(private val dao: HuertoDao) {
+    fun leerSectores() = dao.observarSectores()
+    suspend fun registrarSector(sector: Sector) = dao.agregarSector(sector)
+    suspend fun actualizarSector(sector: Sector) = dao.actualizarSector(sector)
+    suspend fun eliminarSector(sector: Sector): Boolean {
+        if (dao.contarCultivosDeSector(sector.id) > 0 ||
+            dao.contarTareasDeSector(sector.id) > 0) return false
+        dao.eliminarSector(sector)
         return true
     }
 
-    fun leerSiembras() = consultasLocales.observarSiembras()
-    suspend fun registrarSiembra(datoSiembra: SiembraHuerto) = consultasLocales.agregarSiembra(datoSiembra)
-    suspend fun corregirSiembra(datoSiembra: SiembraHuerto) = consultasLocales.modificarSiembra(datoSiembra)
-    suspend fun borrarSiembra(datoSiembra: SiembraHuerto): Boolean {
-        if (consultasLocales.contarLaboresDeSiembra(datoSiembra.codigoSiembra) > 0) return false
-        consultasLocales.quitarSiembra(datoSiembra)
+    fun leerCultivos() = dao.observarCultivos()
+    suspend fun registrarCultivo(cultivo: Cultivo) = dao.agregarCultivo(cultivo)
+    suspend fun actualizarCultivo(cultivo: Cultivo) = dao.actualizarCultivo(cultivo)
+    suspend fun eliminarCultivo(cultivo: Cultivo): Boolean {
+        if (dao.contarTareasDeCultivo(cultivo.id) > 0) return false
+        dao.eliminarCultivo(cultivo)
         return true
     }
 
-    fun leerLabores() = consultasLocales.observarLabores()
-    suspend fun registrarLabor(datoLabor: LaborHuerto) = consultasLocales.agregarLabor(datoLabor)
-    suspend fun corregirLabor(datoLabor: LaborHuerto) = consultasLocales.modificarLabor(datoLabor)
-    suspend fun borrarLabor(datoLabor: LaborHuerto) = consultasLocales.quitarLabor(datoLabor)
+    fun leerTareas() = dao.observarTareas()
+    suspend fun registrarTarea(tarea: Tarea) = dao.agregarTarea(tarea)
+    suspend fun actualizarTarea(tarea: Tarea) = dao.actualizarTarea(tarea)
+    suspend fun eliminarTarea(tarea: Tarea) = dao.eliminarTarea(tarea)
 
-    fun leerProblemas() = consultasLocales.observarProblemas()
-    suspend fun registrarProblema(datoProblema: ProblemaHuerto) = consultasLocales.agregarProblema(datoProblema)
-    suspend fun corregirProblema(datoProblema: ProblemaHuerto) = consultasLocales.modificarProblema(datoProblema)
+    fun leerProblemas() = dao.observarProblemas()
+    suspend fun registrarProblema(problema: Problema) = dao.agregarProblema(problema)
+    suspend fun actualizarProblema(problema: Problema) = dao.actualizarProblema(problema)
 
     companion object {
         // Punto único para crear el repositorio sobre la base local compartida.
         fun desdeContexto(contextoAplicacion: Context) =
-            RepositorioHuerto(BaseHuerto.abrirBase(contextoAplicacion).consultasHuerto())
+            RepositorioHuerto(BaseDatosHuerto.abrirBase(contextoAplicacion).huertoDao())
     }
 }
